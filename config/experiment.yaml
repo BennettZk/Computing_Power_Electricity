@@ -1,0 +1,24 @@
+{
+  "seed": 42,
+  "paths": {
+    "tasks_path": "data/synthetic/tasks.csv",
+    "outputs_dir": "outputs",
+    "results_csv": "results.csv",
+    "summary_txt": "summary.txt",
+    "pareto_csv": "outputs/proposed_pareto.csv"
+  },
+  "optimizer": {
+    "algorithm": "nsga2",
+    "pop_size": 40,
+    "n_gen": 25,
+    "defer_ratio_levels": 10,
+    "cpu_min_active": 1,
+    "gpu_min_active": 0
+  },
+  "dispatch": {
+    "fcfs_headroom": 1.1,
+    "price_response_discount": 0.35,
+    "price_response_release_bonus": 0.25,
+    "deadline_guard_slots": 1
+  }
+}
