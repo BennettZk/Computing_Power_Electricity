@@ -1,29 +1,41 @@
 from dataclasses import dataclass
 
+from utils.io_utils import load_all_configs
+
 
 @dataclass(frozen=True)
 class SystemConfig:
-    # 时间设置
-    hours: int = 24
-    delta_t_hours: float = 1.0
+    hours: int
+    delta_t_hours: float
+    min_servers: int
+    max_servers: int
+    service_rate_per_server: float
+    server_idle_power_kw: float
+    server_peak_power_kw: float
+    pue: float
+    avg_tokens_per_request: float
+    max_avg_delay_hours: float
+    infeasible_penalty: float
 
-    # 服务器设置
-    min_servers: int = 1
-    max_servers: int = 20
+    @classmethod
+    def from_project_config(cls) -> "SystemConfig":
+        configs = load_all_configs()
+        base_cfg = configs["base"]
+        cpu_resource = next(item for item in configs["resource"]["resource_types"] if item["server_type"] == "cpu")
+        return cls(
+            hours=int(base_cfg["time"]["hours"]),
+            delta_t_hours=float(base_cfg["time"]["slot_hours"]),
+            min_servers=1,
+            max_servers=int(cpu_resource["count"]),
+            service_rate_per_server=float(cpu_resource["queue_service_rate"]),
+            server_idle_power_kw=float(cpu_resource["idle_power"]),
+            server_peak_power_kw=float(cpu_resource["peak_power"]),
+            pue=1.25,
+            avg_tokens_per_request=800.0,
+            max_avg_delay_hours=float(base_cfg["constraints"]["max_avg_delay_hours"]),
+            infeasible_penalty=float(base_cfg["constraints"]["infeasible_penalty"]),
+        )
 
-    # 单台服务器服务能力（每小时最多处理多少请求）
-    service_rate_per_server: float = 25.0
 
-    # 功率模型（kW）
-    server_idle_power_kw: float = 0.18
-    server_peak_power_kw: float = 0.42
-
-    # PUE 简化处理
-    pue: float = 1.25
-
-    # 每个请求平均产出 token 数
-    avg_tokens_per_request: float = 800.0
-
-    # 约束和惩罚
-    max_avg_delay_hours: float = 2.0
-    infeasible_penalty: float = 1e6
+def load_system_config() -> SystemConfig:
+    return SystemConfig.from_project_config()

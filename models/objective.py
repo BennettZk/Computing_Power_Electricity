@@ -145,14 +145,24 @@ def _dispatch_resource_queue(
     memory_capacity = resource.memory_capacity_total(active_servers)
     bandwidth_capacity = resource.bandwidth_capacity_total(active_servers)
 
-    total_arrival_demand = sum(task.service_demand for task in queue)
-    queue_delay = estimate_delay_statistics(
-        arrival_rate=total_arrival_demand,
-        service_rate=resource.queue_service_rate,
-        servers=max(1, active_servers),
-        waited_slots=0.0,
-        slot_hours=slot_hours,
-    )["within_slot_delay_hours"]
+    eligible_tasks = [task for task in queue if current_hour >= task.earliest_service_slot]
+    raw_queue_demand = sum(task.service_demand for task in eligible_tasks)
+    stable_queue_demand = 0.0
+    if active_servers > 0:
+        # Cross-slot backlog is already counted via waited_slots. Keep the within-slot
+        # queueing estimate in a stable regime to avoid double counting unstable bursts.
+        stable_queue_demand = min(raw_queue_demand, compute_capacity * 0.95)
+
+    queue_delay = 0.0
+    if stable_queue_demand > 0.0 and active_servers > 0:
+        queue_delay = estimate_delay_statistics(
+            arrival_rate=stable_queue_demand,
+            service_rate=resource.queue_service_rate,
+            servers=max(1, active_servers),
+            waited_slots=0.0,
+            slot_hours=slot_hours,
+        )["within_slot_delay_hours"]
+        queue_delay = min(queue_delay, slot_hours)
 
     completed = 0
     violations = 0

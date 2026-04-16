@@ -1,0 +1,14 @@
+Single data center heterogeneous scheduling experiment summary
+
+Tasks: 4340
+Price scenario: default_tou
+Best proposed total cost: 117.5366
+Best proposed avg delay: 0.726652
+Best proposed SLA violation rate: 0.117512
+
+Charts:
+outputs/price_load_curve.png
+outputs/pareto_front.png
+outputs/energy_bar.png
+outputs/cpu_gpu_utilization.png
+outputs/convergence_curve.png
