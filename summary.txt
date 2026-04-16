@@ -1,14 +1,20 @@
-Single data center heterogeneous scheduling experiment summary
+单数据中心异构资源调度实验摘要
 
-Tasks: 4340
-Price scenario: default_tou
-Best proposed total cost: 117.5366
-Best proposed avg delay: 0.726652
-Best proposed SLA violation rate: 0.117512
+任务总数: 4340
+电价场景: default_tou
+Proposed 推荐方案总电费: 117.5366
+Proposed 推荐方案平均时延: 0.726652
+Proposed 推荐方案 SLA 违约率: 0.117512
 
-Charts:
+主实验图表:
 outputs/price_load_curve.png
 outputs/pareto_front.png
 outputs/energy_bar.png
 outputs/cpu_gpu_utilization.png
 outputs/convergence_curve.png
+
+扩展实验输出:
+outputs/ablation_results.csv
+outputs/ablation_results.png
+outputs/sensitivity_results.csv
+outputs/sensitivity_results.png

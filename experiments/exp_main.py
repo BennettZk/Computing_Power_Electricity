@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from experiments.exp_ablation import run_ablation_experiment
+from experiments.exp_sensitivity import run_sensitivity_experiment
 from models.objective import simulate_schedule
 from schedulers.baseline_fcfs import build_fcfs_schedule
 from schedulers.baseline_price_only import build_price_only_schedule
@@ -12,10 +14,12 @@ from schedulers.proposed_scheduler import run_proposed_scheduler
 from utils.io_utils import ensure_inputs, ensure_output_dirs, load_all_configs, load_resource_pool, write_summary
 from utils.metrics import summarize_result_rows
 from utils.plotting import (
+    plot_ablation_results,
     plot_convergence_curve,
     plot_cpu_gpu_utilization,
     plot_pareto_front,
     plot_price_load_curve,
+    plot_sensitivity_results,
     plot_total_energy_bar,
 )
 from utils.seed import set_seed
@@ -79,28 +83,64 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     plot_cpu_gpu_utilization(results_df, outputs_dir / "cpu_gpu_utilization.png")
     plot_convergence_curve(proposed_result.convergence_df, outputs_dir / "convergence_curve.png")
 
+    ablation_df = run_ablation_experiment(
+        hourly_df=hourly_df,
+        tasks=tasks,
+        resource_pool=resource_pool,
+        base_cfg=base_cfg,
+        price_cfg=price_cfg,
+        experiment_cfg=experiment_cfg,
+        proposed_schedule=proposed_result.best_schedule,
+        homogeneous_schedule=homogeneous_schedule,
+    )
+    ablation_csv_path = outputs_dir / "ablation_results.csv"
+    ablation_df.to_csv(ablation_csv_path, index=False, encoding="utf-8-sig")
+    plot_ablation_results(ablation_df, outputs_dir / "ablation_results.png")
+
+    sensitivity_df = run_sensitivity_experiment(
+        hourly_df=hourly_df,
+        tasks=tasks,
+        resource_pool=resource_pool,
+        base_cfg=base_cfg,
+        price_cfg=price_cfg,
+        experiment_cfg=experiment_cfg,
+    )
+    sensitivity_csv_path = outputs_dir / "sensitivity_results.csv"
+    sensitivity_df.to_csv(sensitivity_csv_path, index=False, encoding="utf-8-sig")
+    plot_sensitivity_results(sensitivity_df, outputs_dir / "sensitivity_results.png")
+
     summary_lines = [
-        "Single data center heterogeneous scheduling experiment summary",
+        "单数据中心异构资源调度实验摘要",
         "",
-        f"Tasks: {len(tasks)}",
-        f"Price scenario: {price_cfg['scenario_name']}",
-        f"Best proposed total cost: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'total_cost'].iloc[0]):.4f}",
-        f"Best proposed avg delay: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'avg_delay_hours'].iloc[0]):.6f}",
-        f"Best proposed SLA violation rate: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'sla_violation_rate'].iloc[0]):.6f}",
+        f"任务总数: {len(tasks)}",
+        f"电价场景: {price_cfg['scenario_name']}",
+        f"Proposed 推荐方案总电费: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'total_cost'].iloc[0]):.4f}",
+        f"Proposed 推荐方案平均时延: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'avg_delay_hours'].iloc[0]):.6f}",
+        f"Proposed 推荐方案 SLA 违约率: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'sla_violation_rate'].iloc[0]):.6f}",
         "",
-        "Charts:",
+        "主实验图表:",
         "outputs/price_load_curve.png",
         "outputs/pareto_front.png",
         "outputs/energy_bar.png",
         "outputs/cpu_gpu_utilization.png",
         "outputs/convergence_curve.png",
+        "",
+        "扩展实验输出:",
+        "outputs/ablation_results.csv",
+        "outputs/ablation_results.png",
+        "outputs/sensitivity_results.csv",
+        "outputs/sensitivity_results.png",
     ]
     write_summary(experiment_cfg["paths"]["summary_txt"], summary_lines)
 
     return results_df, {
         "hourly_df": hourly_df,
         "tasks": tasks,
+        "configs": configs,
+        "resource_pool": resource_pool,
         "proposed_result": proposed_result,
+        "ablation_df": ablation_df,
+        "sensitivity_df": sensitivity_df,
         "detailed_runs": detailed_runs,
     }
 

@@ -112,6 +112,13 @@ cd E:\Coding\redo\dc_token_opt
 
 两种命令都会执行同一套主流程。
 
+当前主流程会依次执行：
+
+1. 四种算法主对比实验
+2. Proposed 消融实验
+3. Proposed 灵敏度实验
+4. 结果表格和图表导出
+
 ## 五、输入数据格式
 
 ### 1. 小时级输入数据
@@ -203,6 +210,28 @@ outputs/
 - `energy_bar.png`：各算法总能耗柱状图
 - `cpu_gpu_utilization.png`：CPU/GPU 利用率对比图
 - `convergence_curve.png`：NSGA-II 收敛曲线
+- `ablation_results.png`：消融实验成本与时延对比图
+- `sensitivity_results.png`：灵敏度实验成本与 SLA 对比图
+
+扩展实验表格：
+
+- `outputs/ablation_results.csv`：消融实验结果
+- `outputs/sensitivity_results.csv`：灵敏度实验结果
+
+消融实验包含：
+
+- `完整Proposed`：保留异构感知、电价响应、优先级调度和延迟任务转移
+- `无电价响应`：关闭可延迟任务转移，观察电价响应机制影响
+- `无优先级调度`：使用 FCFS 顺序评价同一开机方案，观察任务优先级机制影响
+- `无异构感知`：使用同构服务器基线方案，观察异构资源建模影响
+
+灵敏度实验包含：
+
+- `基准场景`
+- `低负载0.8x`
+- `高负载1.2x`
+- `GPU数量减半`
+- `功率上限收紧`
 
 ## 八、参数在哪里改
 

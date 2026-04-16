@@ -83,3 +83,39 @@ def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
+
+
+def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+    x_labels = ["Full", "No Price", "No Priority", "No Hetero"][: len(ablation_df)]
+    ax1.bar(x_labels, ablation_df["total_cost"], color="#2f6f73", alpha=0.85, label="Total Cost")
+    ax1.set_ylabel("Total Cost")
+    ax1.tick_params(axis="x", rotation=15)
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(x_labels, ablation_df["avg_delay_hours"], color="#c2410c", marker="o", label="Average Delay")
+    ax2.set_ylabel("Average Delay (hours)")
+
+    fig.suptitle("Ablation Study: Cost and Delay")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
+    fig, ax1 = plt.subplots(figsize=(10, 5))
+    x_labels = ["Base", "Load 0.8x", "Load 1.2x", "GPU Half", "Power Tight"][: len(sensitivity_df)]
+    ax1.plot(x_labels, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="Total Cost")
+    ax1.set_ylabel("Total Cost")
+    ax1.tick_params(axis="x", rotation=18)
+    ax1.grid(True, alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(x_labels, sensitivity_df["sla_violation_rate"], marker="s", color="#b42318", label="SLA Violation")
+    ax2.set_ylabel("SLA Violation Rate")
+
+    fig.suptitle("Sensitivity Study: Cost and SLA")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
