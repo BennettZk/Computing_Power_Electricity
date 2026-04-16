@@ -18,6 +18,8 @@ from models.task import Task
 
 @dataclass
 class NSGA2RunResult:
+    """NSGA-II 运行结果：帕累托解集、推荐方案、推荐指标和收敛曲线。"""
+
     pareto_df: pd.DataFrame
     best_schedule: SchedulePlan
     best_metrics: dict
@@ -25,6 +27,8 @@ class NSGA2RunResult:
 
 
 class HeterogeneousSchedulingProblem(ElementwiseProblem):
+    """异构资源调度优化问题，保留原 NSGA-II 框架并扩展染色体编码。"""
+
     def __init__(
         self,
         hourly_df: pd.DataFrame,
@@ -43,6 +47,7 @@ class HeterogeneousSchedulingProblem(ElementwiseProblem):
 
         hours = int(base_cfg["time"]["hours"])
         defer_levels = int(experiment_cfg["optimizer"]["defer_ratio_levels"])
+        # 染色体由三段组成：24 小时 CPU 开机数、24 小时 GPU 开机数、24 小时延迟比例。
         xl = np.concatenate(
             [
                 np.full(hours, int(experiment_cfg["optimizer"]["cpu_min_active"])),
@@ -68,6 +73,7 @@ class HeterogeneousSchedulingProblem(ElementwiseProblem):
         )
 
     def decode(self, x: np.ndarray) -> SchedulePlan:
+        """将 NSGA-II 个体向量解码成可仿真的调度方案。"""
         hours = int(self.base_cfg["time"]["hours"])
         defer_levels = max(1, int(self.experiment_cfg["optimizer"]["defer_ratio_levels"]))
         cpu = np.rint(x[:hours]).astype(int)
@@ -76,6 +82,7 @@ class HeterogeneousSchedulingProblem(ElementwiseProblem):
         return SchedulePlan(cpu_servers=cpu, gpu_servers=gpu, defer_ratio=defer)
 
     def _evaluate(self, x, out, *args, **kwargs):
+        """适应度函数：电费、时延/SLA、负载均衡三个目标共同优化。"""
         schedule = self.decode(np.asarray(x, dtype=float))
         metrics = simulate_schedule(
             hourly_df=self.hourly_df,
@@ -107,6 +114,7 @@ def run_nsga2(
     price_cfg: dict,
     experiment_cfg: dict,
 ) -> NSGA2RunResult:
+    """运行 NSGA-II，输出完整帕累托前沿并选择一个满足约束的低成本推荐解。"""
     problem = HeterogeneousSchedulingProblem(
         hourly_df=hourly_df,
         tasks=tasks,
@@ -136,6 +144,7 @@ def run_nsga2(
 
     raw_x = result.X
     if raw_x is None:
+        # 当严格可行解为空时，pymoo 的 result.X 可能为空；回退到最终种群保证实验可运行。
         raw_x = result.pop.get("X")
     X = np.atleast_2d(raw_x)
     rows: list[dict] = []
@@ -172,6 +181,7 @@ def run_nsga2(
         & (pareto_df["peak_limit_violation_hours"] <= 0)
     ]
     recommendation_df = feasible_df if not feasible_df.empty else pareto_df
+    # 默认推荐“满足约束的最低成本解”；若没有可行解，则退化为帕累托集中最低成本解。
     recommended = recommendation_df.sort_values(["total_cost", "avg_delay_hours", "load_imbalance"]).iloc[0]
 
     best_schedule = SchedulePlan(
@@ -182,6 +192,7 @@ def run_nsga2(
 
     convergence_rows: list[dict] = []
     for generation, history_item in enumerate(result.history):
+        # 记录每代的最优目标值，用于绘制算法收敛曲线。
         f_values = np.atleast_2d(history_item.pop.get("F"))
         convergence_rows.append(
             {

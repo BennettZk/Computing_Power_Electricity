@@ -10,10 +10,12 @@ from models.task import generate_synthetic_tasks, load_tasks_csv
 
 
 def load_yaml_like(path: str | Path) -> dict:
+    """读取配置文件。当前配置使用 JSON 兼容写法，保留 .yaml 文件名便于论文说明。"""
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def load_all_configs(config_dir: str | Path = "config") -> dict[str, dict]:
+    """一次性加载基础参数、电价参数、资源参数和实验参数。"""
     config_dir = Path(config_dir)
     return {
         "base": load_yaml_like(config_dir / "base.yaml"),
@@ -24,11 +26,13 @@ def load_all_configs(config_dir: str | Path = "config") -> dict[str, dict]:
 
 
 def load_resource_pool(resource_cfg: dict) -> ResourcePool:
+    """根据 resource.yaml 构造 CPU/GPU 异构资源池对象。"""
     resources = {item["server_type"]: ResourceType(**item) for item in resource_cfg["resource_types"]}
     return ResourcePool(cpu=resources["cpu"], gpu=resources["gpu"])
 
 
 def ensure_hourly_profile(base_cfg: dict, price_cfg: dict) -> pd.DataFrame:
+    """保证小时级价格/负载数据存在；没有处理文件时从旧输入或默认数据生成。"""
     processed_path = Path(price_cfg["processed_profile_path"])
     processed_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -37,6 +41,7 @@ def ensure_hourly_profile(base_cfg: dict, price_cfg: dict) -> pd.DataFrame:
 
     legacy_path = Path(price_cfg["legacy_profile_path"])
     if legacy_path.exists():
+        # 复用原论文复现代码中的 hourly_input.csv，避免推翻原数据流。
         legacy_df = pd.read_csv(legacy_path).sort_values("hour").reset_index(drop=True)
     else:
         legacy_df = pd.DataFrame(
@@ -55,6 +60,7 @@ def ensure_hourly_profile(base_cfg: dict, price_cfg: dict) -> pd.DataFrame:
 
 
 def ensure_task_input(hourly_df: pd.DataFrame, base_cfg: dict, experiment_cfg: dict) -> Path:
+    """保证任务序列存在；首次运行时根据小时负载生成三类合成任务。"""
     tasks_path = Path(experiment_cfg["paths"]["tasks_path"])
     if not tasks_path.exists():
         constraints = base_cfg["constraints"]
@@ -69,6 +75,7 @@ def ensure_task_input(hourly_df: pd.DataFrame, base_cfg: dict, experiment_cfg: d
 
 
 def ensure_inputs(configs: dict[str, dict]) -> tuple[pd.DataFrame, list]:
+    """加载实验所需的小时曲线和任务序列。"""
     hourly_df = ensure_hourly_profile(configs["base"], configs["price"])
     tasks_path = ensure_task_input(hourly_df, configs["base"], configs["experiment"])
     tasks = load_tasks_csv(tasks_path)

@@ -16,6 +16,7 @@ def build_price_only_schedule(
     price_cfg: dict,
     experiment_cfg: dict,
 ) -> SchedulePlan:
+    """Price-Only 基线：只根据电价做削峰填谷，不进行 NSGA-II 联合优化。"""
     hours = int(base_cfg["time"]["hours"])
     aggregated = aggregate_tasks_by_slot(tasks, hours)
     high_threshold = float(hourly_df["price"].quantile(price_cfg["high_price_quantile"]))
@@ -38,14 +39,17 @@ def build_price_only_schedule(
         urgent_gpu = (aggregated.loc[int(row.hour), "token_batch_count"] * 0.8) / max(resource_pool.gpu.queue_service_rate, 1.0)
 
         if price >= high_threshold:
+            # 高电价时段优先保留紧急任务能力，压降可延迟任务对应的开机规模。
             cpu_value = np.ceil(urgent_cpu + max(0.0, cpu_need - urgent_cpu) * (1.0 - discount))
             gpu_value = np.ceil(urgent_gpu + max(0.0, gpu_need - urgent_gpu) * (1.0 - discount))
             defer = 0.6 if tolerant > 0 else 0.0
         elif price <= low_threshold:
+            # 低电价时段适当增加开机数，用于释放前面延后的任务。
             cpu_value = np.ceil(cpu_need * (1.0 + release_bonus))
             gpu_value = np.ceil(gpu_need * (1.0 + release_bonus))
             defer = 0.0
         else:
+            # 平价时段按当前负载需求运行，仅保留少量延迟比例。
             cpu_value = np.ceil(cpu_need)
             gpu_value = np.ceil(gpu_need)
             defer = 0.2 if tolerant > 0 else 0.0

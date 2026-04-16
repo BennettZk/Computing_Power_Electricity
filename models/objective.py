@@ -15,6 +15,8 @@ from utils.metrics import compute_load_imbalance, compute_peak_valley_gap, safe_
 
 @dataclass(frozen=True)
 class SchedulePlan:
+    """优化器输出的调度方案：每小时 CPU/GPU 开机台数与可延迟任务比例。"""
+
     cpu_servers: np.ndarray
     gpu_servers: np.ndarray
     defer_ratio: np.ndarray
@@ -22,6 +24,8 @@ class SchedulePlan:
 
 @dataclass
 class TaskState:
+    """仿真过程中使用的任务状态，记录任务是否已经被延迟到未来时隙。"""
+
     task_id: str
     arrival_slot: int
     task_type: str
@@ -38,6 +42,8 @@ class TaskState:
 
 @dataclass
 class SimulationResult:
+    """一次调度仿真的完整评价指标，用于结果表、目标函数和绘图。"""
+
     total_energy_kwh: float
     total_cost: float
     total_carbon: float
@@ -91,6 +97,7 @@ class SimulationResult:
 
 
 def _clone_tasks_by_slot(tasks: list[Task], hours: int) -> list[list[TaskState]]:
+    """将输入任务复制到各小时桶中，避免仿真过程修改原始任务对象。"""
     task_buckets: list[list[TaskState]] = [[] for _ in range(hours)]
     for task in tasks:
         task_buckets[int(task.arrival_time)].append(
@@ -113,6 +120,7 @@ def _clone_tasks_by_slot(tasks: list[Task], hours: int) -> list[list[TaskState]]
 
 
 def _defer_new_tasks(new_tasks: list[TaskState], hour: int, defer_ratio: float, high_price: bool, deadline_guard_slots: int) -> int:
+    """在高电价时段延后部分可延迟任务，但保留接近截止时间的任务。"""
     if not high_price or defer_ratio <= 0.0:
         return 0
 
@@ -124,6 +132,7 @@ def _defer_new_tasks(new_tasks: list[TaskState], hour: int, defer_ratio: float, 
 
 
 def _task_sort_key(task: TaskState, mode: str) -> tuple:
+    """不同算法使用不同队列排序规则：FCFS、价格优先或综合优先级。"""
     if mode == "fcfs":
         return (task.arrival_slot, task.task_id)
     if mode == "price_only":
@@ -140,6 +149,7 @@ def _dispatch_resource_queue(
     resource_pool: ResourcePool,
     slot_hours: float,
 ) -> tuple[list[TaskState], dict[str, float]]:
+    """在单类资源队列上执行任务，返回未完成任务和该时隙统计量。"""
     resource = resource_pool.as_dict()[resource_name]
     compute_capacity = resource.compute_capacity(active_servers)
     memory_capacity = resource.memory_capacity_total(active_servers)
@@ -149,8 +159,8 @@ def _dispatch_resource_queue(
     raw_queue_demand = sum(task.service_demand for task in eligible_tasks)
     stable_queue_demand = 0.0
     if active_servers > 0:
-        # Cross-slot backlog is already counted via waited_slots. Keep the within-slot
-        # queueing estimate in a stable regime to avoid double counting unstable bursts.
+        # 跨时隙积压已由 waited_slots 计入；这里将时隙内排队估计限制在稳定区间，
+        # 避免同时把积压等待和 M/M/c 不稳定惩罚重复计入平均时延。
         stable_queue_demand = min(raw_queue_demand, compute_capacity * 0.95)
 
     queue_delay = 0.0
@@ -228,6 +238,7 @@ def simulate_schedule(
     price_cfg: dict,
     dispatch_mode: str,
 ) -> SimulationResult:
+    """执行 24 小时调度仿真，汇总成本、时延、SLA、利用率和 token 指标。"""
     hours = int(base_cfg["time"]["hours"])
     slot_hours = float(base_cfg["time"]["slot_hours"])
     constraints = base_cfg["constraints"]
@@ -258,6 +269,7 @@ def simulate_schedule(
     for hour in range(hours):
         slot_tasks = task_buckets[hour]
         is_high_price = float(hourly_df.loc[hour, "price"]) >= high_price_threshold
+        # 高电价时段只延后可延迟任务；时延敏感任务仍直接进入队列。
         deferred_count += _defer_new_tasks(
             new_tasks=slot_tasks,
             hour=hour,
@@ -267,6 +279,7 @@ def simulate_schedule(
         )
 
         for task in slot_tasks:
+            # 当前最小可行版本采用不可分任务：一个任务只进入 CPU 或 GPU 中的一个队列。
             if task.preferred_resource == "gpu":
                 gpu_queue.append(task)
             else:
@@ -335,6 +348,7 @@ def simulate_schedule(
     )
 
     renewable_credit = float(hourly_df["renewable_ratio"].mean()) * float(power_cfg["renewable_credit_factor"])
+    # 绿电比例在这里作为电费折扣近似，碳成本参数默认为 0，可在配置中开启。
     total_cost = max(0.0, total_cost * (1.0 - renewable_credit))
     total_cost += total_carbon * float(power_cfg["carbon_cost_per_kg"])
 
@@ -347,6 +361,7 @@ def simulate_schedule(
     peak_valley_gap_kw = compute_peak_valley_gap(hourly_power_kw)
 
     penalty = 0.0
+    # 约束惩罚项不会单独输出为目标，但会影响 NSGA-II 对不可行方案的排序。
     penalty += max(0.0, avg_delay_hours - float(constraints["max_avg_delay_hours"])) * 1000.0
     penalty += max(0.0, sla_violation_rate - float(constraints["max_sla_violation_rate"])) * 5000.0
     penalty += power_limit_violation_hours * 500.0

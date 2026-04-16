@@ -22,6 +22,7 @@ from utils.seed import set_seed
 
 
 def run_main_experiment() -> tuple[pd.DataFrame, dict]:
+    """主实验入口：加载配置和数据，运行四种算法，导出表格与图表。"""
     configs = load_all_configs()
     base_cfg = configs["base"]
     price_cfg = configs["price"]
@@ -29,6 +30,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     experiment_cfg = configs["experiment"]
 
     set_seed(int(experiment_cfg["seed"]))
+    # 输入不存在时会自动生成默认小时曲线和合成任务，保证首次运行可复现。
     hourly_df, tasks = ensure_inputs(configs)
     outputs_dir = ensure_output_dirs(experiment_cfg)
 
@@ -37,6 +39,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     homogeneous_schedule = build_homogeneous_schedule(hourly_df, resource_pool, base_cfg, experiment_cfg)
     proposed_result = run_proposed_scheduler(hourly_df, tasks, resource_pool, base_cfg, price_cfg, experiment_cfg)
 
+    # 所有算法统一进入 simulate_schedule，保证指标口径一致。
     algorithm_runs = [
         ("FCFS", fcfs_schedule, "fcfs"),
         ("Price-Only", price_only_schedule, "price_only"),
@@ -64,10 +67,12 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     results_csv_path = Path(experiment_cfg["paths"]["results_csv"])
     results_df.to_csv(results_csv_path, index=False, encoding="utf-8-sig")
 
+    # Proposed 的完整帕累托前沿单独保存，便于论文中绘制成本-时延散点图。
     pareto_csv_path = Path(experiment_cfg["paths"]["pareto_csv"])
     pareto_csv_path.parent.mkdir(parents=True, exist_ok=True)
     proposed_result.pareto_df.to_csv(pareto_csv_path, index=False, encoding="utf-8-sig")
 
+    # 自动导出论文实验常用图表。
     plot_price_load_curve(hourly_df, outputs_dir / "price_load_curve.png")
     plot_pareto_front(proposed_result.pareto_df, outputs_dir / "pareto_front.png")
     plot_total_energy_bar(results_df, outputs_dir / "energy_bar.png")

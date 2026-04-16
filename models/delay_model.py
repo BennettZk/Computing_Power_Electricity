@@ -10,6 +10,7 @@ def _factorial(n: int) -> int:
 
 
 def erlang_c(arrival_rate: float, service_rate: float, servers: int) -> float:
+    """Erlang-C 等待概率，用于近似 M/M/c 队列的排队延迟。"""
     if servers <= 0:
         return 1.0
     if arrival_rate < 0 or service_rate <= 0:
@@ -27,6 +28,7 @@ def erlang_c(arrival_rate: float, service_rate: float, servers: int) -> float:
 
 
 def mmc_average_waiting_time_hours(arrival_rate: float, service_rate: float, servers: int) -> float:
+    """返回 M/M/c 平均排队等待时间，系统不稳定时给一个大惩罚值。"""
     if arrival_rate == 0:
         return 0.0
     if servers <= 0 or service_rate <= 0:
@@ -40,6 +42,7 @@ def mmc_average_waiting_time_hours(arrival_rate: float, service_rate: float, ser
 
 
 def mmc_average_total_delay_hours(arrival_rate: float, service_rate: float, servers: int) -> float:
+    """总时延 = 排队等待时间 + 平均服务时间。"""
     queue_wait = mmc_average_waiting_time_hours(arrival_rate, service_rate, servers)
     service_time = 1.0 / service_rate if service_rate > 0 else 1e4
     return queue_wait + service_time
@@ -52,6 +55,7 @@ def estimate_delay_statistics(
     waited_slots: float,
     slot_hours: float,
 ) -> dict[str, float]:
+    """统一输出时隙内排队时延和包含跨时隙等待的总时延。"""
     within_slot_delay = mmc_average_total_delay_hours(arrival_rate, service_rate, servers)
     total_delay = max(0.0, waited_slots) * slot_hours + within_slot_delay
     return {

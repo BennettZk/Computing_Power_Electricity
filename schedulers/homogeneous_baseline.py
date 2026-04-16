@@ -16,6 +16,8 @@ from models.resource import ResourcePool
 
 
 class HomogeneousSchedulingProblem(ElementwiseProblem):
+    """同构基线问题：沿用原论文“单一服务器类型 + 单一负载”的建模思路。"""
+
     def __init__(self, hourly_df: pd.DataFrame, resource_pool: ResourcePool, base_cfg: dict):
         self.hourly_df = hourly_df
         self.resource_pool = resource_pool
@@ -36,6 +38,7 @@ class HomogeneousSchedulingProblem(ElementwiseProblem):
         price = self.hourly_df["price"].to_numpy(dtype=float)
         arrival = self.hourly_df["arrival_rate"].to_numpy(dtype=float)
 
+        # 将 CPU/GPU 参数折算成一个等效服务器，用于构造同构对照组。
         effective_service = (self.resource_pool.cpu.queue_service_rate + self.resource_pool.gpu.queue_service_rate) / 2.0
         effective_idle = (self.resource_pool.cpu.idle_power + self.resource_pool.gpu.idle_power) / 2.0
         effective_peak = (self.resource_pool.cpu.peak_power + self.resource_pool.gpu.peak_power) / 2.0
@@ -58,6 +61,7 @@ class HomogeneousSchedulingProblem(ElementwiseProblem):
 
 
 def build_homogeneous_schedule(hourly_df: pd.DataFrame, resource_pool: ResourcePool, base_cfg: dict, experiment_cfg: dict) -> SchedulePlan:
+    """运行同构 NSGA-II，并把总服务器台数按 CPU/GPU 数量比例映射回异构仿真接口。"""
     problem = HomogeneousSchedulingProblem(hourly_df, resource_pool, base_cfg)
     algorithm = NSGA2(
         pop_size=max(20, int(experiment_cfg["optimizer"]["pop_size"]) // 2),
@@ -78,6 +82,7 @@ def build_homogeneous_schedule(hourly_df: pd.DataFrame, resource_pool: ResourceP
     X = np.atleast_2d(result.X)
     F = np.atleast_2d(result.F)
     norm = (F - F.min(axis=0)) / np.maximum(F.max(axis=0) - F.min(axis=0), 1e-9)
+    # 归一化后取成本和时延综合最小的折中解。
     best_idx = int(np.argmin(norm.sum(axis=1)))
     total_servers = np.rint(X[best_idx]).astype(int)
 

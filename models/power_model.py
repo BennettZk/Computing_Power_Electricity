@@ -8,6 +8,7 @@ from models.resource import ResourcePool, ResourceType
 
 
 def estimate_utilization(arrival_rate: float, service_rate_per_server: float, servers: int) -> float:
+    """用负载/服务能力估算资源利用率，并截断到 [0, 1]。"""
     if servers <= 0 or service_rate_per_server <= 0:
         return 0.0
     capacity = servers * service_rate_per_server
@@ -21,6 +22,7 @@ def hourly_it_power_kw(
     idle_power_kw: float,
     peak_power_kw: float,
 ) -> float:
+    """保留原同构服务器功率接口：单机功率按空闲功率到峰值功率线性插值。"""
     utilization = estimate_utilization(arrival_rate, service_rate_per_server, servers)
     per_server_power = idle_power_kw + utilization * (peak_power_kw - idle_power_kw)
     return max(0.0, servers * per_server_power)
@@ -44,6 +46,7 @@ def hourly_total_power_kw(
 
 
 def hourly_resource_it_power_kw(load_demand: float, active_servers: int, resource: ResourceType) -> float:
+    """异构版本的 IT 功率计算，按 CPU/GPU 资源类型分别估算。"""
     utilization = estimate_utilization(load_demand, resource.queue_service_rate, active_servers)
     per_server_power = resource.idle_power + utilization * (resource.peak_power - resource.idle_power)
     return resource.clamp_active(active_servers) * per_server_power
@@ -56,6 +59,7 @@ def hourly_heterogeneous_power_kw(
     fixed_power_kw: float,
     cooling_base_coeff: float,
 ) -> dict[str, float]:
+    """计算单个时隙的总功率：CPU IT 功率 + GPU IT 功率 + 制冷功率 + 固定功率。"""
     cpu_power = hourly_resource_it_power_kw(served_load.get("cpu", 0.0), active_servers.get("cpu", 0), resource_pool.cpu)
     gpu_power = hourly_resource_it_power_kw(served_load.get("gpu", 0.0), active_servers.get("gpu", 0), resource_pool.gpu)
     cooling_power = (
@@ -88,6 +92,7 @@ def total_energy_cost(
     delta_t_hours: float = 1.0,
     hourly_power_kw: Sequence[float] | None = None,
 ) -> float:
+    """计算总电费；既支持新异构功率序列，也兼容原同构服务器参数。"""
     if hourly_power_kw is not None and prices is not None:
         return _sum_weighted(hourly_power_kw, prices, delta_t_hours)
 
@@ -119,6 +124,7 @@ def total_carbon_emission(
     delta_t_hours: float = 1.0,
     hourly_power_kw: Sequence[float] | None = None,
 ) -> float:
+    """计算碳排放量；异构模式下直接使用每小时总功率与碳因子相乘。"""
     if hourly_power_kw is not None and carbon_factors is not None:
         return _sum_weighted(hourly_power_kw, carbon_factors, delta_t_hours)
 

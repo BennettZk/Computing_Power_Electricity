@@ -9,6 +9,8 @@ import pandas as pd
 
 @dataclass
 class Task:
+    """任务到达序列中的单个任务，保留论文实验所需的资源需求和截止时间字段。"""
+
     task_id: str
     arrival_time: int
     task_type: str
@@ -22,14 +24,17 @@ class Task:
 
     @property
     def delay_tolerant(self) -> bool:
+        """时延容忍任务和 token 批任务允许在高电价时段被延后处理。"""
         return self.task_type in {"delay_tolerant", "token_batch"}
 
     @property
     def preferred_resource(self) -> str:
+        """GPU 需求大于 0 或 token 批任务优先放入 GPU 队列，其余进入 CPU 队列。"""
         return "gpu" if self.gpu_demand > 0 or self.task_type == "token_batch" else "cpu"
 
     @property
     def service_demand(self) -> float:
+        """调度时只取任务首选资源上的计算需求作为队列服务量近似。"""
         return self.gpu_demand if self.preferred_resource == "gpu" else self.cpu_demand
 
     @property
@@ -38,6 +43,7 @@ class Task:
 
 
 def load_tasks_csv(csv_path: str | Path) -> list[Task]:
+    """从 CSV 读取任务序列，并校验必需字段是否完整。"""
     df = pd.read_csv(csv_path)
     required_cols = {
         "task_id",
@@ -84,6 +90,7 @@ def generate_synthetic_tasks(
     max_delay_slots_tolerant: int,
     max_delay_slots_token: int,
 ) -> pd.DataFrame:
+    """根据小时级负载生成可复现实验用的三类合成任务。"""
     rng = random.Random(seed)
     tasks: list[Task] = []
 
@@ -94,6 +101,7 @@ def generate_synthetic_tasks(
         tolerant_count = int(round(total_arrival * 0.30))
         token_count = max(total_arrival - sensitive_count - tolerant_count, 0)
 
+        # 时延敏感任务要求尽快完成，主要消耗 CPU 资源。
         for idx in range(sensitive_count):
             tasks.append(
                 Task(
@@ -110,6 +118,7 @@ def generate_synthetic_tasks(
                 )
             )
 
+        # 时延容忍任务可被需求响应策略延后到低电价时段。
         for idx in range(tolerant_count):
             slack = rng.randint(2, max(2, max_delay_slots_tolerant))
             tasks.append(
@@ -127,6 +136,7 @@ def generate_synthetic_tasks(
                 )
             )
 
+        # token_batch 用于轻量表示 AI 推理/训练类任务，不涉及链上交易。
         for idx in range(token_count):
             slack = rng.randint(2, max(2, max_delay_slots_token))
             tokens = rng.randint(1200, 4800)
@@ -153,6 +163,7 @@ def generate_synthetic_tasks(
 
 
 def aggregate_tasks_by_slot(tasks: list[Task], hours: int) -> pd.DataFrame:
+    """按时隙聚合任务数量和资源需求，供基线算法估算开机台数。"""
     rows: list[dict[str, float]] = []
     for hour in range(hours):
         slot_tasks = [task for task in tasks if task.arrival_time == hour]
