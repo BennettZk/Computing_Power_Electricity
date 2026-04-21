@@ -214,6 +214,7 @@ def _migrate_new_tasks(
     selected_ids: set[str] = set()
     completed = 0
     violations = 0
+    sensitive_violations = 0
     delay_sum = 0.0
     remote_cost = 0.0
     remote_energy = 0.0
@@ -246,11 +247,15 @@ def _migrate_new_tasks(
         deadline_allowance = max(0.0, (task.deadline_slot - hour + 1) * slot_hours)
         if remote_delay > deadline_allowance:
             violations += 1
+            # 远端执行的时延敏感任务同样纳入敏感任务 SLA 违约统计。
+            if task.task_type == "delay_sensitive":
+                sensitive_violations += 1
 
     remaining_tasks = [task for task in new_tasks if task.task_id not in selected_ids]
     return remaining_tasks, {
         "completed": float(completed),
         "violations": float(violations),
+        "sensitive_violations": float(sensitive_violations),
         "delay_sum": delay_sum,
         "remote_cost": remote_cost,
         "remote_energy_kwh": remote_energy,
@@ -266,6 +271,7 @@ def _empty_remote_stats() -> dict[str, float]:
     return {
         "completed": 0.0,
         "violations": 0.0,
+        "sensitive_violations": 0.0,
         "delay_sum": 0.0,
         "remote_cost": 0.0,
         "remote_energy_kwh": 0.0,
@@ -498,7 +504,11 @@ def simulate_schedule(
         slot_violations = int(cpu_stats["violations"] + gpu_stats["violations"])
         total_completed += slot_completed + int(remote_stats["completed"])
         total_violations += slot_violations + int(remote_stats["violations"])
-        sensitive_violations += int(cpu_stats["sensitive_violations"] + gpu_stats["sensitive_violations"])
+        sensitive_violations += int(
+            cpu_stats["sensitive_violations"]
+            + gpu_stats["sensitive_violations"]
+            + remote_stats["sensitive_violations"]
+        )
         delay_sum += float(cpu_stats["delay_sum"] + gpu_stats["delay_sum"])
         total_tokens += float(cpu_stats["served_tokens"] + gpu_stats["served_tokens"])
 
