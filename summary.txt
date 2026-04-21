@@ -2,9 +2,11 @@
 
 任务总数: 4340
 电价场景: default_tou
-Proposed 推荐方案总电费: 117.5366
-Proposed 推荐方案平均时延: 0.726652
-Proposed 推荐方案 SLA 违约率: 0.117512
+Proposed 推荐方案总电费: 128.2004
+Proposed 推荐方案平均时延: 0.816336
+Proposed 推荐方案 SLA 违约率: 0.088249
+Proposed 空间迁移任务数: 32
+Proposed 远端执行成本: 3.1200
 
 主实验图表:
 outputs/price_load_curve.png
@@ -12,9 +14,12 @@ outputs/pareto_front.png
 outputs/energy_bar.png
 outputs/cpu_gpu_utilization.png
 outputs/convergence_curve.png
+outputs/spatial_migration_bar.png
+outputs/load_shift_curve.png
 
 扩展实验输出:
 outputs/ablation_results.csv
 outputs/ablation_results.png
+outputs/time_space_ablation.png
 outputs/sensitivity_results.csv
 outputs/sensitivity_results.png

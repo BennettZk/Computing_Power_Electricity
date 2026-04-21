@@ -52,6 +52,27 @@ def _tighten_power_limit(base_cfg: dict, ratio: float) -> dict:
     return cfg
 
 
+def _adjust_migration_cfg(base_cfg: dict, **updates) -> dict:
+    """构造空间迁移参数变化场景，例如远端容量或迁移成本变化。"""
+    cfg = {
+        **base_cfg,
+        "constraints": {**base_cfg["constraints"]},
+        "power": {**base_cfg["power"]},
+        "task_defaults": {**base_cfg["task_defaults"]},
+        "migration": {**base_cfg.get("migration", {})},
+    }
+    cfg["migration"].update(updates)
+    return cfg
+
+
+def _amplify_price_volatility(hourly_df: pd.DataFrame, factor: float) -> pd.DataFrame:
+    """构造高电价波动场景：高于均值的电价抬高，低于均值的电价压低。"""
+    df = hourly_df.copy()
+    mean_price = float(df["price"].mean())
+    df["price"] = (mean_price + (df["price"] - mean_price) * factor).clip(lower=0.01)
+    return df
+
+
 def run_sensitivity_experiment(
     hourly_df: pd.DataFrame,
     tasks: list[Task],
@@ -64,12 +85,38 @@ def run_sensitivity_experiment(
     light_cfg = _lightweight_experiment_cfg(experiment_cfg)
     seed = int(experiment_cfg["seed"])
 
+    migration_cfg = base_cfg.get("migration", {})
     scenarios = [
         ("基准场景", hourly_df, tasks, resource_pool, base_cfg),
         ("低负载0.8x", hourly_df, _generate_scaled_tasks(hourly_df, base_cfg, seed + 1, 0.8, "load_08"), resource_pool, base_cfg),
         ("高负载1.2x", hourly_df, _generate_scaled_tasks(hourly_df, base_cfg, seed + 2, 1.2, "load_12"), resource_pool, base_cfg),
         ("GPU数量减半", hourly_df, tasks, _halve_gpu_pool(resource_pool), base_cfg),
         ("功率上限收紧", hourly_df, tasks, resource_pool, _tighten_power_limit(base_cfg, 0.85)),
+        (
+            "低远端容量",
+            hourly_df,
+            tasks,
+            resource_pool,
+            _adjust_migration_cfg(
+                base_cfg,
+                remote_capacity_cpu=float(migration_cfg.get("remote_capacity_cpu", 12.0)) * 0.5,
+                remote_capacity_gpu=float(migration_cfg.get("remote_capacity_gpu", 8.0)) * 0.5,
+            ),
+        ),
+        (
+            "高远端容量",
+            hourly_df,
+            tasks,
+            resource_pool,
+            _adjust_migration_cfg(
+                base_cfg,
+                remote_capacity_cpu=float(migration_cfg.get("remote_capacity_cpu", 12.0)) * 1.8,
+                remote_capacity_gpu=float(migration_cfg.get("remote_capacity_gpu", 8.0)) * 1.8,
+            ),
+        ),
+        ("低迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.03)),
+        ("高迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.18)),
+        ("高电价波动", _amplify_price_volatility(hourly_df, 1.6), tasks, resource_pool, base_cfg),
     ]
 
     rows: list[dict] = []
@@ -97,6 +144,9 @@ def run_sensitivity_experiment(
                 "peak_valley_gap_kw": metrics["peak_valley_gap_kw"],
                 "unit_token_energy_kwh_per_million": metrics["unit_token_energy_kwh_per_million"],
                 "unit_token_cost_per_million": metrics["unit_token_cost_per_million"],
+                "remote_task_count": metrics["remote_task_count"],
+                "remote_cost": metrics["remote_cost"],
+                "remote_energy_kwh": metrics["remote_energy_kwh"],
             }
         )
 

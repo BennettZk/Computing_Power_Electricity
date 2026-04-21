@@ -94,4 +94,5 @@ def build_homogeneous_schedule(hourly_df: pd.DataFrame, resource_pool: ResourceP
         cpu_servers=cpu_servers,
         gpu_servers=gpu_servers,
         defer_ratio=np.zeros(int(base_cfg["time"]["hours"]), dtype=float),
+        migration_ratio=np.zeros(int(base_cfg["time"]["hours"]), dtype=float),
     )

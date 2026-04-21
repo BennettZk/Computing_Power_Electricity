@@ -26,15 +26,23 @@ def run_ablation_experiment(
         cpu_servers=proposed_schedule.cpu_servers.copy(),
         gpu_servers=proposed_schedule.gpu_servers.copy(),
         defer_ratio=np.zeros(hours, dtype=float),
+        migration_ratio=proposed_schedule.migration_ratio.copy(),
+    )
+    no_spatial_schedule = SchedulePlan(
+        cpu_servers=proposed_schedule.cpu_servers.copy(),
+        gpu_servers=proposed_schedule.gpu_servers.copy(),
+        defer_ratio=proposed_schedule.defer_ratio.copy(),
+        migration_ratio=np.zeros(hours, dtype=float),
     )
     if homogeneous_schedule is None:
         homogeneous_schedule = build_homogeneous_schedule(hourly_df, resource_pool, base_cfg, experiment_cfg)
 
     ablation_runs = [
         ("完整Proposed", proposed_schedule, "proposed"),
-        ("无电价响应", no_defer_schedule, "proposed"),
-        ("无优先级调度", no_defer_schedule, "fcfs"),
+        ("无空间迁移", no_spatial_schedule, "proposed"),
+        ("无时间迁移", no_defer_schedule, "proposed"),
         ("无异构感知", homogeneous_schedule, "fcfs"),
+        ("无优先级调度", proposed_schedule, "no_priority"),
     ]
 
     rows: list[dict] = []

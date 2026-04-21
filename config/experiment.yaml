@@ -12,6 +12,7 @@
     "pop_size": 40,
     "n_gen": 25,
     "defer_ratio_levels": 10,
+    "migration_ratio_levels": 10,
     "cpu_min_active": 1,
     "gpu_min_active": 0
   },

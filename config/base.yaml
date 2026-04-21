@@ -24,5 +24,15 @@
     "high_priority": 3,
     "medium_priority": 2,
     "low_priority": 1
+  },
+  "migration": {
+    "enable_spatial_migration": true,
+    "max_migration_ratio": 0.4,
+    "remote_capacity_cpu": 12.0,
+    "remote_capacity_gpu": 8.0,
+    "migration_delay_hours": 0.2,
+    "migration_cost_per_task": 0.08,
+    "network_energy_kwh_per_task": 0.01,
+    "high_price_only": true
   }
 }

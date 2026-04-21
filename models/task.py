@@ -7,6 +7,17 @@ import random
 import pandas as pd
 
 
+def _to_bool(value) -> bool:
+    """兼容 CSV 中的 True/False、1/0、yes/no 等布尔写法。"""
+    if isinstance(value, bool):
+        return value
+    if pd.isna(value):
+        return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() in {"true", "1", "yes", "y"}
+
+
 @dataclass
 class Task:
     """任务到达序列中的单个任务，保留论文实验所需的资源需求和截止时间字段。"""
@@ -21,6 +32,9 @@ class Task:
     token_amount: float
     deadline: int
     priority: int
+    migratable: bool = False
+    migration_cost_weight: float = 1.0
+    migration_delay_penalty: float = 0.0
 
     @property
     def delay_tolerant(self) -> bool:
@@ -61,6 +75,14 @@ def load_tasks_csv(csv_path: str | Path) -> list[Task]:
     if missing:
         raise ValueError(f"Task input is missing columns: {sorted(missing)}")
 
+    # 兼容旧版任务数据：没有空间迁移字段时使用默认值。
+    if "migratable" not in df.columns:
+        df["migratable"] = False
+    if "migration_cost_weight" not in df.columns:
+        df["migration_cost_weight"] = 1.0
+    if "migration_delay_penalty" not in df.columns:
+        df["migration_delay_penalty"] = 0.0
+
     tasks = [
         Task(
             task_id=str(row.task_id),
@@ -73,6 +95,9 @@ def load_tasks_csv(csv_path: str | Path) -> list[Task]:
             token_amount=float(row.token_amount),
             deadline=int(row.deadline),
             priority=int(row.priority),
+            migratable=_to_bool(row.migratable),
+            migration_cost_weight=float(row.migration_cost_weight),
+            migration_delay_penalty=float(row.migration_delay_penalty),
         )
         for row in df.itertuples(index=False)
     ]
@@ -103,6 +128,7 @@ def generate_synthetic_tasks(
 
         # 时延敏感任务要求尽快完成，主要消耗 CPU 资源。
         for idx in range(sensitive_count):
+            migratable = rng.random() < 0.05
             tasks.append(
                 Task(
                     task_id=f"s-{hour:02d}-{idx:03d}",
@@ -115,12 +141,16 @@ def generate_synthetic_tasks(
                     token_amount=0.0,
                     deadline=min(hour + 1, 23),
                     priority=3,
+                    migratable=migratable,
+                    migration_cost_weight=1.4,
+                    migration_delay_penalty=0.25 if migratable else 0.0,
                 )
             )
 
         # 时延容忍任务可被需求响应策略延后到低电价时段。
         for idx in range(tolerant_count):
             slack = rng.randint(2, max(2, max_delay_slots_tolerant))
+            migratable = rng.random() < 0.45
             tasks.append(
                 Task(
                     task_id=f"t-{hour:02d}-{idx:03d}",
@@ -133,6 +163,9 @@ def generate_synthetic_tasks(
                     token_amount=round(rng.uniform(120.0, 480.0), 3),
                     deadline=min(hour + slack, 23),
                     priority=2,
+                    migratable=migratable,
+                    migration_cost_weight=1.0,
+                    migration_delay_penalty=0.1 if migratable else 0.0,
                 )
             )
 
@@ -152,6 +185,9 @@ def generate_synthetic_tasks(
                     token_amount=float(tokens),
                     deadline=min(hour + slack, 23),
                     priority=1,
+                    migratable=True,
+                    migration_cost_weight=1.2,
+                    migration_delay_penalty=0.15,
                 )
             )
 
@@ -169,6 +205,7 @@ def aggregate_tasks_by_slot(tasks: list[Task], hours: int) -> pd.DataFrame:
         slot_tasks = [task for task in tasks if task.arrival_time == hour]
         cpu_tasks = [task for task in slot_tasks if task.preferred_resource == "cpu"]
         gpu_tasks = [task for task in slot_tasks if task.preferred_resource == "gpu"]
+        migratable_tasks = [task for task in slot_tasks if task.migratable]
         rows.append(
             {
                 "hour": hour,
@@ -183,6 +220,9 @@ def aggregate_tasks_by_slot(tasks: list[Task], hours: int) -> pd.DataFrame:
                 "memory_demand": sum(task.memory_demand for task in slot_tasks),
                 "bandwidth_demand": sum(task.bandwidth_demand for task in slot_tasks),
                 "token_amount": sum(task.token_amount for task in slot_tasks),
+                "migratable_task_count": len(migratable_tasks),
+                "migratable_cpu_demand": sum(task.cpu_demand for task in migratable_tasks),
+                "migratable_gpu_demand": sum(task.gpu_demand for task in migratable_tasks),
             }
         )
     return pd.DataFrame(rows)

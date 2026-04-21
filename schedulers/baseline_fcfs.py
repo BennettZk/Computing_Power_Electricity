@@ -24,4 +24,5 @@ def build_fcfs_schedule(tasks: list[Task], resource_pool: ResourcePool, base_cfg
         cpu_servers=cpu_servers.to_numpy(dtype=int),
         gpu_servers=gpu_servers.to_numpy(dtype=int),
         defer_ratio=np.zeros(hours, dtype=float),
+        migration_ratio=np.zeros(hours, dtype=float),
     )

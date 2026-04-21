@@ -87,7 +87,7 @@ def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path
 
 def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    x_labels = ["Full", "No Price", "No Priority", "No Hetero"][: len(ablation_df)]
+    x_labels = ["Full", "No Spatial", "No Time", "No Hetero", "No Priority"][: len(ablation_df)]
     ax1.bar(x_labels, ablation_df["total_cost"], color="#2f6f73", alpha=0.85, label="Total Cost")
     ax1.set_ylabel("Total Cost")
     ax1.tick_params(axis="x", rotation=15)
@@ -105,7 +105,18 @@ def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) ->
 
 def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(10, 5))
-    x_labels = ["Base", "Load 0.8x", "Load 1.2x", "GPU Half", "Power Tight"][: len(sensitivity_df)]
+    x_labels = [
+        "Base",
+        "Load 0.8x",
+        "Load 1.2x",
+        "GPU Half",
+        "Power Tight",
+        "Remote Low",
+        "Remote High",
+        "Mig Cost Low",
+        "Mig Cost High",
+        "Price Vol.",
+    ][: len(sensitivity_df)]
     ax1.plot(x_labels, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="Total Cost")
     ax1.set_ylabel("Total Cost")
     ax1.tick_params(axis="x", rotation=18)
@@ -116,6 +127,51 @@ def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Pa
     ax2.set_ylabel("SLA Violation Rate")
 
     fig.suptitle("Sensitivity Study: Cost and SLA")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(results_df["algorithm"], results_df["remote_task_count"], color="#3b5bdb")
+    ax.set_ylabel("Remote Task Count")
+    ax.set_title("Spatial Migration Comparison")
+    ax.grid(True, axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | Path) -> None:
+    fig, ax = plt.subplots(figsize=(10, 5))
+    hours = hourly_df["hour"]
+    ax.plot(hours, metrics.hourly_power_kw, marker="o", label="Local Power")
+    ax.plot(hours, metrics.hourly_effective_power_kw, marker="s", label="Local + Remote Energy Equivalent")
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("Power / Energy Equivalent (kW)")
+    ax.set_title("Local Load Curve With Spatial Migration")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
+    selected = ablation_df[ablation_df["algorithm"].isin(["完整Proposed", "无空间迁移", "无时间迁移"])].copy()
+    labels = ["Time+Space", "Time Only", "Space Only"][: len(selected)]
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax1.bar(labels, selected["total_cost"], color="#1864ab", alpha=0.85)
+    ax1.set_ylabel("Total Cost")
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(labels, selected["avg_delay_hours"], color="#d9480f", marker="o")
+    ax2.set_ylabel("Average Delay (hours)")
+
+    fig.suptitle("Time-Space Migration Ablation")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)

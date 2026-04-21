@@ -17,9 +17,12 @@ from utils.plotting import (
     plot_ablation_results,
     plot_convergence_curve,
     plot_cpu_gpu_utilization,
+    plot_load_shift_curve,
     plot_pareto_front,
     plot_price_load_curve,
     plot_sensitivity_results,
+    plot_spatial_migration_bar,
+    plot_time_space_ablation,
     plot_total_energy_bar,
 )
 from utils.seed import set_seed
@@ -82,6 +85,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     plot_total_energy_bar(results_df, outputs_dir / "energy_bar.png")
     plot_cpu_gpu_utilization(results_df, outputs_dir / "cpu_gpu_utilization.png")
     plot_convergence_curve(proposed_result.convergence_df, outputs_dir / "convergence_curve.png")
+    plot_spatial_migration_bar(results_df, outputs_dir / "spatial_migration_bar.png")
+    plot_load_shift_curve(hourly_df, detailed_runs["Proposed"]["metrics"], outputs_dir / "load_shift_curve.png")
 
     ablation_df = run_ablation_experiment(
         hourly_df=hourly_df,
@@ -96,6 +101,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     ablation_csv_path = outputs_dir / "ablation_results.csv"
     ablation_df.to_csv(ablation_csv_path, index=False, encoding="utf-8-sig")
     plot_ablation_results(ablation_df, outputs_dir / "ablation_results.png")
+    plot_time_space_ablation(ablation_df, outputs_dir / "time_space_ablation.png")
 
     sensitivity_df = run_sensitivity_experiment(
         hourly_df=hourly_df,
@@ -117,6 +123,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         f"Proposed 推荐方案总电费: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'total_cost'].iloc[0]):.4f}",
         f"Proposed 推荐方案平均时延: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'avg_delay_hours'].iloc[0]):.6f}",
         f"Proposed 推荐方案 SLA 违约率: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'sla_violation_rate'].iloc[0]):.6f}",
+        f"Proposed 空间迁移任务数: {int(results_df.loc[results_df['algorithm'] == 'Proposed', 'remote_task_count'].iloc[0])}",
+        f"Proposed 远端执行成本: {float(results_df.loc[results_df['algorithm'] == 'Proposed', 'remote_cost'].iloc[0]):.4f}",
         "",
         "主实验图表:",
         "outputs/price_load_curve.png",
@@ -124,10 +132,13 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "outputs/energy_bar.png",
         "outputs/cpu_gpu_utilization.png",
         "outputs/convergence_curve.png",
+        "outputs/spatial_migration_bar.png",
+        "outputs/load_shift_curve.png",
         "",
         "扩展实验输出:",
         "outputs/ablation_results.csv",
         "outputs/ablation_results.png",
+        "outputs/time_space_ablation.png",
         "outputs/sensitivity_results.csv",
         "outputs/sensitivity_results.png",
     ]

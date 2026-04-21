@@ -62,7 +62,14 @@ def ensure_hourly_profile(base_cfg: dict, price_cfg: dict) -> pd.DataFrame:
 def ensure_task_input(hourly_df: pd.DataFrame, base_cfg: dict, experiment_cfg: dict) -> Path:
     """保证任务序列存在；首次运行时根据小时负载生成三类合成任务。"""
     tasks_path = Path(experiment_cfg["paths"]["tasks_path"])
-    if not tasks_path.exists():
+    required_migration_cols = {"migratable", "migration_cost_weight", "migration_delay_penalty"}
+    should_generate = not tasks_path.exists()
+    if tasks_path.exists():
+        existing_cols = set(pd.read_csv(tasks_path, nrows=1).columns)
+        # 旧版合成任务没有空间迁移字段时，重新生成一次，确保 Proposed 能展示空间迁移能力。
+        should_generate = not required_migration_cols.issubset(existing_cols)
+
+    if should_generate:
         constraints = base_cfg["constraints"]
         generate_synthetic_tasks(
             hourly_df=hourly_df,

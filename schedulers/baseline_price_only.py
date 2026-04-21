@@ -62,4 +62,5 @@ def build_price_only_schedule(
         cpu_servers=np.array(cpu_servers, dtype=int),
         gpu_servers=np.array(gpu_servers, dtype=int),
         defer_ratio=np.array(defer_ratio, dtype=float),
+        migration_ratio=np.zeros(hours, dtype=float),
     )

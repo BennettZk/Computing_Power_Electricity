@@ -47,6 +47,11 @@ def summarize_result_rows(result_rows: list[dict]) -> pd.DataFrame:
         "avg_gpu_utilization",
         "load_imbalance",
         "peak_valley_gap_kw",
+        "remote_task_count",
+        "remote_completion_rate",
+        "remote_cost",
+        "remote_energy_kwh",
+        "migration_delay_hours",
         "unit_token_energy_kwh_per_million",
         "unit_token_cost_per_million",
     ]
