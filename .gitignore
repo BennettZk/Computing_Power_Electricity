@@ -1,5 +1,11 @@
 .venv/
 .idea/
+
+
+outputs/
+results.csv
+summary.txt
+
 *.png
 *.jpg
 *.jpeg
