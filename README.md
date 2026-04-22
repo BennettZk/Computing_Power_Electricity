@@ -120,7 +120,7 @@ data/hourly_input.csv
 data/synthetic/tasks.csv
 ```
 
-如果文件不存在，程序会根据小时级负载自动生成合成任务。任务加载函数兼容旧 CSV：如果旧任务文件缺少空间迁移字段，会为 `migratable`、`migration_cost_weight`、`migration_delay_penalty` 补默认值。若希望使用包含空间迁移属性分布的新合成任务数据，请手动删除 `data/synthetic/tasks.csv` 后重新运行。
+如果文件不存在，程序会根据小时级负载自动生成合成任务。任务加载函数兼容旧 CSV：如果旧任务文件缺少空间迁移字段，会为 `migratable`、`migration_cost_weight`、`migration_delay_penalty` 补默认值，不会因为缺字段自动重生成。若希望使用包含空间迁移属性分布的新合成任务数据，请手动删除 `data/synthetic/tasks.csv` 后重新运行。
 
 任务字段说明：
 
