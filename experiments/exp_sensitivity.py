@@ -114,8 +114,8 @@ def run_sensitivity_experiment(
                 remote_capacity_gpu=float(migration_cfg.get("remote_capacity_gpu", 8.0)) * 1.8,
             ),
         ),
-        ("低迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.03)),
-        ("高迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.18)),
+        ("低迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.015)),
+        ("高迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.12)),
         ("高电价波动", _amplify_price_volatility(hourly_df, 1.6), tasks, resource_pool, base_cfg),
     ]
 

@@ -122,13 +122,13 @@ def generate_synthetic_tasks(
     for row in hourly_df.itertuples(index=False):
         hour = int(row.hour)
         total_arrival = int(row.arrival_rate)
-        sensitive_count = int(round(total_arrival * 0.55))
-        tolerant_count = int(round(total_arrival * 0.30))
+        sensitive_count = int(round(total_arrival * 0.50))
+        tolerant_count = int(round(total_arrival * 0.28))
         token_count = max(total_arrival - sensitive_count - tolerant_count, 0)
 
         # 时延敏感任务要求尽快完成，主要消耗 CPU 资源。
         for idx in range(sensitive_count):
-            migratable = rng.random() < 0.05
+            migratable = rng.random() < 0.03
             tasks.append(
                 Task(
                     task_id=f"s-{hour:02d}-{idx:03d}",
@@ -142,15 +142,15 @@ def generate_synthetic_tasks(
                     deadline=min(hour + 1, 23),
                     priority=3,
                     migratable=migratable,
-                    migration_cost_weight=1.4,
-                    migration_delay_penalty=0.25 if migratable else 0.0,
+                    migration_cost_weight=1.5,
+                    migration_delay_penalty=0.18 if migratable else 0.0,
                 )
             )
 
         # 时延容忍任务可被需求响应策略延后到低电价时段。
         for idx in range(tolerant_count):
             slack = rng.randint(2, max(2, max_delay_slots_tolerant))
-            migratable = rng.random() < 0.45
+            migratable = rng.random() < 0.62
             tasks.append(
                 Task(
                     task_id=f"t-{hour:02d}-{idx:03d}",
@@ -164,8 +164,8 @@ def generate_synthetic_tasks(
                     deadline=min(hour + slack, 23),
                     priority=2,
                     migratable=migratable,
-                    migration_cost_weight=1.0,
-                    migration_delay_penalty=0.1 if migratable else 0.0,
+                    migration_cost_weight=0.9,
+                    migration_delay_penalty=0.06 if migratable else 0.0,
                 )
             )
 
@@ -186,8 +186,8 @@ def generate_synthetic_tasks(
                     deadline=min(hour + slack, 23),
                     priority=1,
                     migratable=True,
-                    migration_cost_weight=1.2,
-                    migration_delay_penalty=0.15,
+                    migration_cost_weight=0.95,
+                    migration_delay_penalty=0.06,
                 )
             )
 
