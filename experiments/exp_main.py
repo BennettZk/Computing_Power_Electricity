@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from experiments.exp_ablation import run_ablation_experiment
+from experiments.exp_rolling import run_rolling_experiment
 from experiments.exp_sensitivity import run_sensitivity_experiment
 from models.objective import SchedulePlan, simulate_schedule
 from optimizers.ga import run_ga
@@ -24,6 +25,7 @@ from utils.plotting import (
     plot_pareto_front,
     plot_power_breakdown_stack,
     plot_price_load_curve,
+    plot_rolling_vs_static,
     plot_sensitivity_results,
     plot_single_objective_convergence,
     plot_spatial_migration_bar,
@@ -159,6 +161,19 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         )
     plot_time_space_migration_effect(pd.DataFrame(effect_rows), outputs_dir / "time_space_migration_effect.png")
 
+    rolling_result = run_rolling_experiment(
+        hourly_df=hourly_df,
+        tasks=tasks,
+        resource_pool=resource_pool,
+        base_cfg=base_cfg,
+        price_cfg=price_cfg,
+        experiment_cfg=experiment_cfg,
+        static_schedule=proposed_result.best_schedule,
+    )
+    rolling_csv_path = outputs_dir / "rolling_results.csv"
+    rolling_result.results_df.to_csv(rolling_csv_path, index=False, encoding="utf-8-sig")
+    plot_rolling_vs_static(rolling_result.results_df, outputs_dir / "rolling_vs_static.png")
+
     sensitivity_df = run_sensitivity_experiment(
         hourly_df=hourly_df,
         tasks=tasks,
@@ -201,6 +216,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "outputs/ablation_results.png",
         "outputs/time_space_ablation.png",
         "outputs/time_space_migration_effect.png",
+        "outputs/rolling_results.csv",
+        "outputs/rolling_vs_static.png",
         "outputs/sensitivity_results.csv",
         "outputs/sensitivity_results.png",
         "outputs/cross_region_delay_sensitivity.png",
@@ -215,6 +232,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "ga_result": ga_result,
         "pso_result": pso_result,
         "proposed_result": proposed_result,
+        "rolling_result": rolling_result,
         "ablation_df": ablation_df,
         "sensitivity_df": sensitivity_df,
         "detailed_runs": detailed_runs,

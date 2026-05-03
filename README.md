@@ -42,7 +42,10 @@ dc_token_opt/
 ├─ experiments/
 │  ├─ exp_main.py            # 主实验入口
 │  ├─ exp_ablation.py        # 消融实验
-│  └─ exp_sensitivity.py     # 灵敏度实验
+│  ├─ exp_sensitivity.py     # 灵敏度实验
+│  └─ exp_rolling.py         # Rolling-Proposed 滚动窗口实验
+├─ scripts/
+│  └─ prepare_real_dataset.py# 真实数据字段画像、清洗和标准格式转换
 ├─ utils/
 │  ├─ io_utils.py            # 配置、数据和输出目录工具
 │  ├─ metrics.py             # 指标表整理
@@ -98,7 +101,7 @@ cd E:\Coding\redo\dc_token_opt
 .\.venv\Scripts\python.exe run_nsga2.py
 ```
 
-主流程会依次执行基线算法、GA/PSO 启发式算法、Proposed 主方法对比、Proposed 消融实验、灵敏度实验、结果表格导出和图表绘制。
+主流程会依次执行基线算法、GA/PSO 启发式算法、Proposed 主方法对比、Proposed 消融实验、Rolling-Proposed 滚动窗口实验、灵敏度实验、结果表格导出和图表绘制。
 
 ## 输入数据格式
 
@@ -138,6 +141,46 @@ data/synthetic/tasks.csv
 - `migratable`：是否允许空间迁移到外部算力池。
 - `migration_cost_weight`：迁移成本权重。
 - `migration_delay_penalty`：迁移额外时延惩罚。
+
+## 真实数据接入与清洗
+
+拿到真实数据后，建议先用 profile-only 模式查看字段结构，不直接改主实验输入：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_real_dataset.py --input data/raw/real_dataset.csv --profile-only
+```
+
+脚本会输出：
+
+```text
+outputs/real_data_profile.txt
+outputs/real_data_cleaning_report.txt
+```
+
+确认时间列、任务 ID、CPU/GPU/内存和持续时间字段后，再用字段映射模式生成项目标准 CSV：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_real_dataset.py `
+  --input data/raw/real_dataset.csv `
+  --output-tasks data/real/tasks.csv `
+  --output-hourly data/real/hourly_input.csv `
+  --time-col submit_time `
+  --task-id-col job_id `
+  --cpu-col cpu_request `
+  --gpu-col gpu_request `
+  --memory-col memory_request `
+  --duration-col duration
+```
+
+字段缺失时脚本会写入 warning 并使用默认值，例如 `gpu_demand=0`、`memory_demand=4.0`、`bandwidth_demand=0.5`、`deadline=arrival_time+2`。生成的 `tasks.csv` 会包含 `models.task.load_tasks_csv` 所需字段。
+
+最后将 `config/experiment.yaml` 中 `paths.tasks_path` 改为：
+
+```json
+"tasks_path": "data/real/tasks.csv"
+```
+
+如需使用真实小时输入，可将 `data/real/hourly_input.csv` 复制到 `data/hourly_input.csv`，或在 `config/price.yaml` 中将 `legacy_profile_path` 指向 `data/real/hourly_input.csv`。如果已经生成过 `data/processed/hourly_profile.csv`，需要删除该文件后重新运行，确保新的小时曲线生效。
 
 ## 算法说明
 
@@ -215,6 +258,7 @@ outputs/
 - `power_breakdown_stack.png`：CPU 功率、GPU 功率、制冷功率和固定功率堆叠图。
 - `time_space_ablation.png`：时空迁移消融图，对比完整 Proposed、无空间迁移和无时间迁移。
 - `time_space_migration_effect.png`：无迁移、仅时间迁移、时间+空间迁移的成本与时延对比。
+- `rolling_vs_static.png`：Rolling-Proposed 与 Static-Proposed 的成本、时延、SLA 和远端迁移任务数对比。
 - `ablation_results.png`：消融实验成本与时延对比。
 - `sensitivity_results.png`：灵敏度实验成本与 SLA 对比。
 - `cross_region_delay_sensitivity.png`：低/中/高跨区时延下远端迁移任务数和平均时延对比。
@@ -222,6 +266,7 @@ outputs/
 扩展实验表格：
 
 - `outputs/ablation_results.csv`：消融实验结果。
+- `outputs/rolling_results.csv`：Static-Proposed 与 Rolling-Proposed 总体结果及各滚动窗口结果。
 - `outputs/sensitivity_results.csv`：灵敏度实验结果。
 
 ## 结果字段说明
@@ -263,6 +308,17 @@ outputs/
 ```text
 outputs/ablation_results.csv
 outputs/time_space_ablation.png
+```
+
+## 滚动窗口实验
+
+Rolling-Proposed 采用 4 小时滚动窗口，每个窗口只基于当前队列近似任务、未来 4 小时电价和资源约束重新运行一个轻量 Proposed 短视窗优化。窗口内最优调度方案会拼接为 24 小时调度曲线，并用统一的 `simulate_schedule` 口径与 Static-Proposed 对比。
+
+滚动窗口结果会导出到：
+
+```text
+outputs/rolling_results.csv
+outputs/rolling_vs_static.png
 ```
 
 ## 灵敏度实验

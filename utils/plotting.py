@@ -311,3 +311,30 @@ def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: st
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
+
+
+def plot_rolling_vs_static(rolling_df: pd.DataFrame, output_path: str | Path) -> None:
+    selected = rolling_df[rolling_df["scope"] == "overall"].copy()
+    if selected.empty:
+        return
+
+    algorithms = selected["algorithm"].astype(str).tolist()
+    metrics = [
+        ("total_cost", "Total Cost"),
+        ("avg_delay_hours", "Average Delay (hours)"),
+        ("sla_violation_rate", "SLA Violation Rate"),
+        ("remote_task_count", "Remote Task Count"),
+    ]
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 7))
+    for ax, (col, title) in zip(axes.ravel(), metrics):
+        ax.bar(algorithms, selected[col])
+        ax.set_title(title)
+        ax.grid(True, axis="y", alpha=0.3)
+        ax.tick_params(axis="x", rotation=12)
+
+    fig.suptitle("Rolling-Proposed vs Static-Proposed")
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
