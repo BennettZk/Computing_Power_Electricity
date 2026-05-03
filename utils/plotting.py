@@ -58,7 +58,7 @@ def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
 
 def plot_total_energy_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(results_df["algorithm"], results_df["total_energy_kwh"], color=["#567d46", "#c98d00", "#7f8c8d", "#0b7285"])
+    ax.bar(results_df["algorithm"], results_df["total_energy_kwh"])
     ax.set_ylabel("Total Energy (kWh)")
     ax.set_title("Algorithm Energy Comparison")
     ax.grid(True, axis="y", alpha=0.3)

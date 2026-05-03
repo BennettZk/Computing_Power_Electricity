@@ -14,7 +14,17 @@
     "defer_ratio_levels": 10,
     "migration_ratio_levels": 10,
     "cpu_min_active": 1,
-    "gpu_min_active": 0
+    "gpu_min_active": 0,
+    "ga_pop_size": 30,
+    "ga_n_gen": 20,
+    "ga_crossover_prob": 0.85,
+    "ga_mutation_rate": 0.01,
+    "ga_tournament_size": 3,
+    "pso_swarm_size": 30,
+    "pso_n_iter": 20,
+    "pso_w": 0.7,
+    "pso_c1": 1.5,
+    "pso_c2": 1.5
   },
   "dispatch": {
     "fcfs_headroom": 1.1,

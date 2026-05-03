@@ -236,8 +236,8 @@ outputs/
 - `avg_gpu_utilization`：GPU 平均利用率。
 - `load_imbalance`：负载不均衡度。
 - `peak_valley_gap_kw`：本地功率峰谷差。
-- `energy_per_million_tokens`：单位百万 token 能耗。
-- `cost_per_million_tokens`：单位百万 token 成本。
+- `unit_token_energy_kwh_per_million`：单位百万 token 能耗。
+- `unit_token_cost_per_million`：单位百万 token 成本。
 
 新增空间迁移字段：
 
