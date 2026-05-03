@@ -3,7 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 import pandas as pd
+
+
+def _configure_plot_fonts() -> None:
+    """优先使用系统中文字体，避免中文场景名在图片中显示为方框。"""
+    available_fonts = {font.name for font in font_manager.fontManager.ttflist}
+    for font_name in ["Microsoft YaHei", "SimHei", "SimSun", "KaiTi"]:
+        if font_name in available_fonts:
+            plt.rcParams["font.sans-serif"] = [font_name, "DejaVu Sans"]
+            break
+    plt.rcParams["axes.unicode_minus"] = False
+
+
+_configure_plot_fonts()
 
 
 def plot_price_load_curve(hourly_df: pd.DataFrame, output_path: str | Path) -> None:
@@ -105,29 +119,55 @@ def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) ->
 
 def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(10, 5))
-    x_labels = [
-        "Base",
-        "Load 0.8x",
-        "Load 1.2x",
-        "GPU Half",
-        "Power Tight",
-        "Remote Low",
-        "Remote High",
-        "Mig Cost Low",
-        "Mig Cost High",
-        "Price Vol.",
-    ][: len(sensitivity_df)]
-    ax1.plot(x_labels, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="Total Cost")
+    if "scenario" in sensitivity_df.columns:
+        x_labels = sensitivity_df["scenario"].astype(str).tolist()
+    else:
+        x_labels = [f"Scenario {idx + 1}" for idx in range(len(sensitivity_df))]
+    x = list(range(len(sensitivity_df)))
+
+    ax1.plot(x, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="Total Cost")
     ax1.set_ylabel("Total Cost")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(x_labels)
     ax1.tick_params(axis="x", rotation=18)
     ax1.grid(True, alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x_labels, sensitivity_df["sla_violation_rate"], marker="s", color="#b42318", label="SLA Violation")
+    ax2.plot(x, sensitivity_df["sla_violation_rate"], marker="s", color="#b42318", label="SLA Violation")
     ax2.set_ylabel("SLA Violation Rate")
 
     fig.suptitle("Sensitivity Study: Cost and SLA")
     fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
+    scenario_order = ["低跨区时延", "中跨区时延", "高跨区时延"]
+    selected = sensitivity_df[sensitivity_df["scenario"].isin(scenario_order)].copy()
+    if selected.empty:
+        return
+
+    selected["scenario"] = pd.Categorical(selected["scenario"], categories=scenario_order, ordered=True)
+    selected = selected.sort_values("scenario")
+    x_labels = selected["scenario"].astype(str).tolist()
+    x = list(range(len(selected)))
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax1.bar(x, selected["remote_task_count"], color="#3b5bdb", alpha=0.85, label="Remote Task Count")
+    ax1.set_xlabel("跨区时延场景")
+    ax1.set_ylabel("Remote Task Count")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(x_labels)
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(x, selected["avg_delay_hours"], color="#d9480f", marker="o", label="Average Delay")
+    ax2.set_ylabel("Average Delay (hours)")
+
+    fig.suptitle("Cross-Region Delay Sensitivity")
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
 
@@ -173,5 +213,68 @@ def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path)
 
     fig.suptitle("Time-Space Migration Ablation")
     fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_time_space_migration_effect(effect_df: pd.DataFrame, output_path: str | Path) -> None:
+    if effect_df.empty:
+        return
+
+    x_labels = effect_df["scenario"].astype(str).tolist()
+    x = list(range(len(effect_df)))
+
+    fig, ax1 = plt.subplots(figsize=(8, 5))
+    ax1.bar(x, effect_df["total_cost"], color="#1864ab", alpha=0.85, label="Total Cost")
+    ax1.set_ylabel("Total Cost")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(x_labels)
+    ax1.grid(True, axis="y", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    ax2.plot(x, effect_df["avg_delay_hours"], color="#d9480f", marker="o", label="Average Delay")
+    ax2.set_ylabel("Average Delay (hours)")
+
+    fig.suptitle("Time-Space Migration Effect")
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
+def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: str | Path) -> None:
+    required_cols = [
+        "hour",
+        "cpu_it_power_kw",
+        "gpu_it_power_kw",
+        "cooling_power_kw",
+        "fixed_power_kw",
+    ]
+    if power_breakdown_df.empty or any(col not in power_breakdown_df.columns for col in required_cols):
+        return
+
+    hours = power_breakdown_df["hour"].tolist()
+    bottom = [0.0 for _ in hours]
+    stacks = [
+        ("cpu_it_power_kw", "CPU IT Power"),
+        ("gpu_it_power_kw", "GPU IT Power"),
+        ("cooling_power_kw", "Cooling Power"),
+        ("fixed_power_kw", "Fixed Power"),
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for col, label in stacks:
+        values = power_breakdown_df[col].astype(float).tolist()
+        ax.bar(hours, values, bottom=bottom, label=label)
+        bottom = [base + value for base, value in zip(bottom, values)]
+
+    ax.set_xlabel("Hour")
+    ax.set_ylabel("Power (kW)")
+    ax.set_xticks(hours)
+    ax.set_title("Hourly Power Breakdown")
+    ax.grid(True, axis="y", alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
     plt.close(fig)

@@ -116,6 +116,9 @@ def run_sensitivity_experiment(
         ),
         ("低迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.015)),
         ("高迁移成本", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_cost_per_task=0.12)),
+        ("低跨区时延", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_delay_hours=0.05)),
+        ("中跨区时延", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_delay_hours=0.20)),
+        ("高跨区时延", hourly_df, tasks, resource_pool, _adjust_migration_cfg(base_cfg, migration_delay_hours=0.50)),
         ("高电价波动", _amplify_price_volatility(hourly_df, 1.6), tasks, resource_pool, base_cfg),
     ]
 
@@ -130,6 +133,7 @@ def run_sensitivity_experiment(
             experiment_cfg=light_cfg,
         )
         metrics = result.best_metrics
+        scenario_migration_cfg = scenario_base_cfg.get("migration", {})
         rows.append(
             {
                 "scenario": scenario,
@@ -145,8 +149,11 @@ def run_sensitivity_experiment(
                 "unit_token_energy_kwh_per_million": metrics["unit_token_energy_kwh_per_million"],
                 "unit_token_cost_per_million": metrics["unit_token_cost_per_million"],
                 "remote_task_count": metrics["remote_task_count"],
+                "remote_completion_rate": metrics["remote_completion_rate"],
                 "remote_cost": metrics["remote_cost"],
                 "remote_energy_kwh": metrics["remote_energy_kwh"],
+                "migration_delay_hours": metrics["migration_delay_hours"],
+                "configured_migration_delay_hours": float(scenario_migration_cfg.get("migration_delay_hours", 0.0)),
             }
         )
 

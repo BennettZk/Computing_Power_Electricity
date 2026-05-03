@@ -6,7 +6,7 @@ import pandas as pd
 
 from experiments.exp_ablation import run_ablation_experiment
 from experiments.exp_sensitivity import run_sensitivity_experiment
-from models.objective import simulate_schedule
+from models.objective import SchedulePlan, simulate_schedule
 from schedulers.baseline_fcfs import build_fcfs_schedule
 from schedulers.baseline_price_only import build_price_only_schedule
 from schedulers.homogeneous_baseline import build_homogeneous_schedule
@@ -16,13 +16,16 @@ from utils.metrics import summarize_result_rows
 from utils.plotting import (
     plot_ablation_results,
     plot_convergence_curve,
+    plot_cross_region_delay_sensitivity,
     plot_cpu_gpu_utilization,
     plot_load_shift_curve,
     plot_pareto_front,
+    plot_power_breakdown_stack,
     plot_price_load_curve,
     plot_sensitivity_results,
     plot_spatial_migration_bar,
     plot_time_space_ablation,
+    plot_time_space_migration_effect,
     plot_total_energy_bar,
 )
 from utils.seed import set_seed
@@ -88,6 +91,11 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     plot_spatial_migration_bar(results_df, outputs_dir / "spatial_migration_bar.png")
     plot_load_shift_curve(hourly_df, detailed_runs["Proposed"]["metrics"], outputs_dir / "load_shift_curve.png")
 
+    proposed_metrics = detailed_runs["Proposed"]["metrics"]
+    power_breakdown_df = pd.DataFrame(proposed_metrics.hourly_power_breakdown)
+    power_breakdown_df.to_csv(outputs_dir / "hourly_power_breakdown.csv", index=False, encoding="utf-8-sig")
+    plot_power_breakdown_stack(power_breakdown_df, outputs_dir / "power_breakdown_stack.png")
+
     ablation_df = run_ablation_experiment(
         hourly_df=hourly_df,
         tasks=tasks,
@@ -103,6 +111,45 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     plot_ablation_results(ablation_df, outputs_dir / "ablation_results.png")
     plot_time_space_ablation(ablation_df, outputs_dir / "time_space_ablation.png")
 
+    best_schedule = proposed_result.best_schedule
+    no_migration_schedule = SchedulePlan(
+        cpu_servers=best_schedule.cpu_servers.copy(),
+        gpu_servers=best_schedule.gpu_servers.copy(),
+        defer_ratio=best_schedule.defer_ratio * 0.0,
+        migration_ratio=best_schedule.migration_ratio * 0.0,
+    )
+    time_only_schedule = SchedulePlan(
+        cpu_servers=best_schedule.cpu_servers.copy(),
+        gpu_servers=best_schedule.gpu_servers.copy(),
+        defer_ratio=best_schedule.defer_ratio.copy(),
+        migration_ratio=best_schedule.migration_ratio * 0.0,
+    )
+    effect_rows: list[dict] = []
+    for scenario, schedule in [
+        ("无迁移", no_migration_schedule),
+        ("仅时间迁移", time_only_schedule),
+        ("时间+空间迁移", best_schedule),
+    ]:
+        metrics = simulate_schedule(
+            hourly_df=hourly_df,
+            tasks=tasks,
+            resource_pool=resource_pool,
+            schedule=schedule,
+            base_cfg=base_cfg,
+            price_cfg=price_cfg,
+            dispatch_mode="proposed",
+        )
+        effect_rows.append(
+            {
+                "scenario": scenario,
+                "total_cost": metrics.total_cost,
+                "avg_delay_hours": metrics.avg_delay_hours,
+                "remote_task_count": metrics.remote_task_count,
+                "sla_violation_rate": metrics.sla_violation_rate,
+            }
+        )
+    plot_time_space_migration_effect(pd.DataFrame(effect_rows), outputs_dir / "time_space_migration_effect.png")
+
     sensitivity_df = run_sensitivity_experiment(
         hourly_df=hourly_df,
         tasks=tasks,
@@ -114,6 +161,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     sensitivity_csv_path = outputs_dir / "sensitivity_results.csv"
     sensitivity_df.to_csv(sensitivity_csv_path, index=False, encoding="utf-8-sig")
     plot_sensitivity_results(sensitivity_df, outputs_dir / "sensitivity_results.png")
+    plot_cross_region_delay_sensitivity(sensitivity_df, outputs_dir / "cross_region_delay_sensitivity.png")
 
     summary_lines = [
         "单数据中心异构资源调度实验摘要",
@@ -134,13 +182,17 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "outputs/convergence_curve.png",
         "outputs/spatial_migration_bar.png",
         "outputs/load_shift_curve.png",
+        "outputs/hourly_power_breakdown.csv",
+        "outputs/power_breakdown_stack.png",
         "",
         "扩展实验输出:",
         "outputs/ablation_results.csv",
         "outputs/ablation_results.png",
         "outputs/time_space_ablation.png",
+        "outputs/time_space_migration_effect.png",
         "outputs/sensitivity_results.csv",
         "outputs/sensitivity_results.png",
+        "outputs/cross_region_delay_sensitivity.png",
     ]
     write_summary(experiment_cfg["paths"]["summary_txt"], summary_lines)
 

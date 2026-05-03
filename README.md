@@ -2,7 +2,7 @@
 
 本项目是在“面向电价型需求响应的数据中心能耗多目标联合优化策略”复现代码基础上做的增量式改造。当前版本保留原论文的分时电价、能耗成本、任务时延、需求响应和多目标优化主线，并将“同构服务器 + 单一负载”扩展为“CPU/GPU 异构资源池 + 多类型任务 + 时空迁移调度”。
 
-这里的“空间迁移”不是完整多数据中心建模，也不是云边协同大系统，而是新增一个轻量的外部算力池 `remote_pool` 抽象。Proposed 调度器在高电价、本地功率压力较高或本地容量不足时，可以将部分可迁移任务转移到远端执行，从而形成“本地时间延迟 + 远端空间迁移”的折中。
+本项目的核心亮点不是完整多数据中心建模，而是在单数据中心异构资源调度场景下，引入轻量 `remote_pool` 抽象，刻画任务跨区迁移对成本、能耗和 SLA 的影响。Proposed 调度器在高电价、本地功率压力较高或本地容量不足时，可以将部分可迁移任务转移到远端执行，从而形成“本地时间延迟 + 远端空间迁移”的折中。
 
 ## 项目解决的问题
 
@@ -15,7 +15,7 @@
 ```text
 dc_token_opt/
 ├─ config/
-│  ├─ base.yaml              # 基础约束、SLA、功率上限、空间迁移参数
+│  ├─ base.yaml              # 基础约束、业务侧约束、功率上限、空间迁移参数
 │  ├─ price.yaml             # 分时电价输入路径和高低电价分位数
 │  ├─ resource.yaml          # CPU/GPU 异构资源池参数
 │  └─ experiment.yaml        # 随机种子、输出路径、NSGA-II 参数
@@ -146,25 +146,33 @@ data/synthetic/tasks.csv
 
 `Homogeneous-Baseline`：同构服务器基线。它沿用原论文“同构服务器 + 单一负载”的建模思路，将 CPU/GPU 资源折算为等效服务器，用于对比异构感知调度的收益。
 
-`Proposed`：本文方法。它使用 NSGA-II 同时优化每小时 CPU 开机数、GPU 开机数、时间迁移比例 `defer_ratio` 和空间迁移比例 `migration_ratio`。调度目标包括总成本、平均时延/SLA 和资源协同程度。空间迁移通过外部算力池抽象实现，远端执行任务不计入本地 IT 功率，但会产生远端执行成本、网络能耗和迁移时延惩罚。
+`Proposed`：使用 NSGA-II 同时优化每小时 CPU 开机数、GPU 开机数、时间迁移比例 `defer_ratio` 和空间迁移比例 `migration_ratio`。调度目标包括总成本、平均时延/SLA 和资源协同程度。空间迁移通过外部算力池抽象实现，远端执行任务不计入本地 IT 功率，但会产生远端执行成本、网络能耗和迁移时延惩罚。
 
 ## 时空迁移建模说明
 
 时间迁移：对可延迟任务，在高电价时段按 `defer_ratio` 延后到后续时段处理，降低峰时本地用电压力。
 
-空间迁移：对 `migratable=True` 的任务，在高电价、本地功率压力较高或本地 CPU/GPU 容量不足时，按 `migration_ratio` 尝试迁移到外部算力池执行。
+空间迁移：对 `migratable=True` 的任务，在高电价、本地功率压力较高或本地 CPU/GPU 容量不足时，按 `migration_ratio` 尝试迁移到外部算力池执行，用于刻画可迁移任务向远端算力池转移后的成本、能耗和 SLA 变化。
+
+跨区时延：用于刻画远端执行带来的服务质量损失，是影响迁移决策和 SLA 违约率的重要因素。模型中远端迁移时延由两部分组成：
+
+```text
+远端迁移时延 = 基础跨区传输/调度时延 + 任务级迁移惩罚时延
+```
+
+其中，`base_cfg["migration"]["migration_delay_hours"]` 表示基础跨区传输/调度时延，`task.migration_delay_penalty` 表示任务自身对跨区迁移的额外时延惩罚。
 
 外部算力池由 `config/base.yaml` 中的 `migration` 参数控制：
 
 ```json
 "migration": {
   "enable_spatial_migration": true,
-  "max_migration_ratio": 0.4,
-  "remote_capacity_cpu": 12.0,
-  "remote_capacity_gpu": 8.0,
-  "migration_delay_hours": 0.2,
-  "migration_cost_per_task": 0.08,
-  "network_energy_kwh_per_task": 0.01,
+  "max_migration_ratio": 0.55,
+  "remote_capacity_cpu": 20.0,
+  "remote_capacity_gpu": 14.0,
+  "migration_delay_hours": 0.05,
+  "migration_cost_per_task": 0.03,
+  "network_energy_kwh_per_task": 0.005,
   "high_price_only": true
 }
 ```
@@ -196,9 +204,13 @@ outputs/
 - `convergence_curve.png`：NSGA-II 收敛曲线。
 - `spatial_migration_bar.png`：各算法远端迁移任务数对比。
 - `load_shift_curve.png`：原始本地负荷与时空迁移后本地负荷对比。
-- `time_space_ablation.png`：无迁移、仅时间迁移、时间+空间迁移的成本与时延对比。
+- `hourly_power_breakdown.csv`：按小时导出的 CPU/GPU IT 功率、制冷功率、固定功率、远端能耗和等效功率。
+- `power_breakdown_stack.png`：CPU 功率、GPU 功率、制冷功率和固定功率堆叠图。
+- `time_space_ablation.png`：时空迁移消融图，对比完整 Proposed、无空间迁移和无时间迁移。
+- `time_space_migration_effect.png`：无迁移、仅时间迁移、时间+空间迁移的成本与时延对比。
 - `ablation_results.png`：消融实验成本与时延对比。
 - `sensitivity_results.png`：灵敏度实验成本与 SLA 对比。
+- `cross_region_delay_sensitivity.png`：低/中/高跨区时延下远端迁移任务数和平均时延对比。
 
 扩展实验表格：
 
@@ -227,7 +239,7 @@ outputs/
 - `remote_completion_rate`：可迁移任务中实际远端完成的比例。
 - `remote_cost`：远端迁移执行成本。
 - `remote_energy_kwh`：迁移网络能耗。
-- `migration_delay_hours`：远端任务平均迁移时延。
+- `migration_delay_hours`：远端任务平均迁移时延，统计时包含基础跨区传输/调度时延和任务级迁移惩罚时延。
 
 ## 消融实验
 
@@ -259,13 +271,21 @@ outputs/time_space_ablation.png
 - `高远端容量`
 - `低迁移成本`
 - `高迁移成本`
+- `低跨区时延`：`migration_delay_hours = 0.05`
+- `中跨区时延`：`migration_delay_hours = 0.20`
+- `高跨区时延`：`migration_delay_hours = 0.50`
 - `高电价波动`
+
+### 跨区时延敏感性实验
+
+跨区时延敏感性实验固定其他调度输入，分别设置低/中/高三档基础跨区传输时延，观察远端迁移任务数、平均时延和 SLA 违约率的变化。结果写入 `outputs/sensitivity_results.csv`，并额外生成 `outputs/cross_region_delay_sensitivity.png`。
 
 灵敏度结果会导出到：
 
 ```text
 outputs/sensitivity_results.csv
 outputs/sensitivity_results.png
+outputs/cross_region_delay_sensitivity.png
 ```
 
 ## 参数在哪里修改

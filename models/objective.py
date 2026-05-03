@@ -83,6 +83,7 @@ class SimulationResult:
     hourly_remote_energy_kwh: list[float] = field(default_factory=list)
     hourly_remote_task_count: list[int] = field(default_factory=list)
     hourly_effective_power_kw: list[float] = field(default_factory=list)
+    hourly_power_breakdown: list[dict[str, Any]] = field(default_factory=list)
     deferred_task_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -207,7 +208,8 @@ def _migrate_new_tasks(
     # 远端容量只做小时级抽象，不维护完整远端排队系统。
     remaining_cpu = float(migration_cfg.get("remote_capacity_cpu", 0.0))
     remaining_gpu = float(migration_cfg.get("remote_capacity_gpu", 0.0))
-    base_delay = float(migration_cfg.get("migration_delay_hours", 0.0))
+    # 基础跨区传输/调度时延，来自 base_cfg["migration"]["migration_delay_hours"]。
+    base_cross_region_delay_hours = float(migration_cfg.get("migration_delay_hours", 0.0))
     cost_per_task = float(migration_cfg.get("migration_cost_per_task", 0.0))
     energy_per_task = float(migration_cfg.get("network_energy_kwh_per_task", 0.0))
 
@@ -240,12 +242,14 @@ def _migrate_new_tasks(
         selected_ids.add(task.task_id)
         completed += 1
         remote_tokens += task.token_amount
-        remote_delay = base_delay + task.migration_delay_penalty
-        delay_sum += remote_delay
+        # 远端迁移时延 = 基础跨区传输/调度时延 + 任务级迁移惩罚时延。
+        task_penalty_delay_hours = task.migration_delay_penalty
+        remote_delay_hours = base_cross_region_delay_hours + task_penalty_delay_hours
+        delay_sum += remote_delay_hours
         remote_cost += cost_per_task * task.migration_cost_weight
         remote_energy += energy_per_task
         deadline_allowance = max(0.0, (task.deadline_slot - hour + 1) * slot_hours)
-        if remote_delay > deadline_allowance:
+        if remote_delay_hours > deadline_allowance:
             violations += 1
             # 远端执行的时延敏感任务同样纳入敏感任务 SLA 违约统计。
             if task.task_type == "delay_sensitive":
@@ -423,6 +427,7 @@ def simulate_schedule(
     hourly_effective_power_kw: list[float] = []
     hourly_remote_energy_kwh: list[float] = []
     hourly_remote_task_count: list[int] = []
+    hourly_power_breakdown: list[dict[str, Any]] = []
     hourly_delay_hours: list[float] = []
     hourly_completion_rate: list[float] = []
     hourly_cpu_utilization: list[float] = []
@@ -521,10 +526,25 @@ def simulate_schedule(
             cooling_base_coeff=float(power_cfg["cooling_base_coeff"]),
         )
         total_power = power_detail["total_power_kw"]
+        remote_energy_this_hour = float(remote_stats["remote_energy_kwh"])
+        effective_power = total_power + remote_energy_this_hour / max(slot_hours, 1e-9)
         hourly_power_kw.append(total_power)
-        hourly_remote_energy_kwh.append(float(remote_stats["remote_energy_kwh"]))
+        hourly_remote_energy_kwh.append(remote_energy_this_hour)
         hourly_remote_task_count.append(int(remote_stats["completed"]))
-        hourly_effective_power_kw.append(total_power + float(remote_stats["remote_energy_kwh"]) / max(slot_hours, 1e-9))
+        hourly_effective_power_kw.append(effective_power)
+        hourly_power_breakdown.append(
+            {
+                "hour": int(hour),
+                "price": float(hourly_df.loc[hour, "price"]),
+                "cpu_it_power_kw": float(power_detail["cpu_it_power_kw"]),
+                "gpu_it_power_kw": float(power_detail["gpu_it_power_kw"]),
+                "cooling_power_kw": float(power_detail["cooling_power_kw"]),
+                "fixed_power_kw": float(power_detail["fixed_power_kw"]),
+                "total_power_kw": float(total_power),
+                "remote_energy_kwh": remote_energy_this_hour,
+                "effective_power_kw": float(effective_power),
+            }
+        )
 
         if total_power > float(constraints["power_limit_kw"]):
             power_limit_violation_hours += 1
@@ -623,5 +643,6 @@ def simulate_schedule(
         hourly_remote_energy_kwh=hourly_remote_energy_kwh,
         hourly_remote_task_count=hourly_remote_task_count,
         hourly_effective_power_kw=hourly_effective_power_kw,
+        hourly_power_breakdown=hourly_power_breakdown,
         deferred_task_count=deferred_count,
     )
