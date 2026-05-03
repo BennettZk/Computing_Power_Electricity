@@ -99,6 +99,25 @@ def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path
     plt.close(fig)
 
 
+def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path: str | Path, title: str) -> None:
+    if convergence_df.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(convergence_df["generation"], convergence_df["best_fitness"], label="Best Fitness")
+    if "avg_fitness" in convergence_df.columns:
+        ax.plot(convergence_df["generation"], convergence_df["avg_fitness"], label="Average Fitness", alpha=0.75)
+    ax.set_xlabel("Generation")
+    ax.set_ylabel("Weighted Fitness")
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+
+
 def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(9, 5))
     x_labels = ["Full", "No Spatial", "No Time", "No Hetero", "No Priority"][: len(ablation_df)]
@@ -162,8 +181,12 @@ def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_pat
     ax1.grid(True, axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x, selected["avg_delay_hours"], color="#d9480f", marker="o", label="Average Delay")
-    ax2.set_ylabel("Average Delay (hours)")
+    ax2.plot(x, selected["sla_violation_rate"], color="#b42318", marker="o", label="SLA Violation Rate")
+    ax2.set_ylabel("SLA Violation Rate")
+
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
 
     fig.suptitle("Cross-Region Delay Sensitivity")
     fig.tight_layout()
@@ -199,8 +222,18 @@ def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | P
 
 
 def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
-    selected = ablation_df[ablation_df["algorithm"].isin(["完整Proposed", "无空间迁移", "无时间迁移"])].copy()
-    labels = ["Time+Space", "Time Only", "Space Only"][: len(selected)]
+    scenario_order = ["完整Proposed", "无空间迁移", "无时间迁移"]
+    label_map = {
+        "完整Proposed": "Time+Space",
+        "无空间迁移": "Time Only",
+        "无时间迁移": "Space Only",
+    }
+    selected = ablation_df[ablation_df["algorithm"].isin(scenario_order)].copy()
+    if selected.empty:
+        return
+    selected["algorithm"] = pd.Categorical(selected["algorithm"], categories=scenario_order, ordered=True)
+    selected = selected.sort_values("algorithm")
+    labels = [label_map[str(value)] for value in selected["algorithm"]]
 
     fig, ax1 = plt.subplots(figsize=(8, 5))
     ax1.bar(labels, selected["total_cost"], color="#1864ab", alpha=0.85)

@@ -18,7 +18,7 @@ dc_token_opt/
 │  ├─ base.yaml              # 基础约束、业务侧约束、功率上限、空间迁移参数
 │  ├─ price.yaml             # 分时电价输入路径和高低电价分位数
 │  ├─ resource.yaml          # CPU/GPU 异构资源池参数
-│  └─ experiment.yaml        # 随机种子、输出路径、NSGA-II 参数
+│  └─ experiment.yaml        # 随机种子、输出路径、优化器参数
 ├─ data/
 │  ├─ hourly_input.csv       # 小时级负载、电价、碳因子输入
 │  ├─ processed/             # 自动生成的小时级曲线
@@ -36,8 +36,9 @@ dc_token_opt/
 │  └─ proposed_scheduler.py  # Proposed 调度器入口
 ├─ optimizers/
 │  ├─ nsga2.py               # NSGA-II 多目标优化
-│  ├─ ga.py                  # GA 预留接口
-│  └─ pso.py                 # PSO 预留接口
+│  ├─ common.py              # GA/PSO 共享编码、解码和适应度函数
+│  ├─ ga.py                  # 单目标遗传算法对比优化器
+│  └─ pso.py                 # 单目标粒子群对比优化器
 ├─ experiments/
 │  ├─ exp_main.py            # 主实验入口
 │  ├─ exp_ablation.py        # 消融实验
@@ -97,7 +98,7 @@ cd E:\Coding\redo\dc_token_opt
 .\.venv\Scripts\python.exe run_nsga2.py
 ```
 
-主流程会依次执行四种算法对比、Proposed 消融实验、灵敏度实验、结果表格导出和图表绘制。
+主流程会依次执行基线算法、GA/PSO 启发式算法、Proposed 主方法对比、Proposed 消融实验、灵敏度实验、结果表格导出和图表绘制。
 
 ## 输入数据格式
 
@@ -138,7 +139,7 @@ data/synthetic/tasks.csv
 - `migration_cost_weight`：迁移成本权重。
 - `migration_delay_penalty`：迁移额外时延惩罚。
 
-## 四种算法说明
+## 算法说明
 
 `FCFS`：先来先服务基线。它根据任务到达顺序执行任务，不考虑分时电价，也不启用空间迁移。
 
@@ -146,7 +147,11 @@ data/synthetic/tasks.csv
 
 `Homogeneous-Baseline`：同构服务器基线。它沿用原论文“同构服务器 + 单一负载”的建模思路，将 CPU/GPU 资源折算为等效服务器，用于对比异构感知调度的收益。
 
-`Proposed`：使用 NSGA-II 同时优化每小时 CPU 开机数、GPU 开机数、时间迁移比例 `defer_ratio` 和空间迁移比例 `migration_ratio`。调度目标包括总成本、平均时延/SLA 和资源协同程度。空间迁移通过外部算力池抽象实现，远端执行任务不计入本地 IT 功率，但会产生远端执行成本、网络能耗和迁移时延惩罚。
+`GA`：单目标遗传算法对比优化器。它使用与 NSGA-II 相同的 CPU/GPU 开机数、`defer_ratio` 和 `migration_ratio` 编码，将成本、时延、SLA、负载均衡和约束惩罚加权为单一适应度后搜索调度方案。
+
+`PSO`：单目标粒子群对比优化器。它采用连续粒子位置表示调度变量，评价时按整数编码 round/clip 成可执行方案，用于对比启发式搜索在同一仿真口径下的表现。
+
+`Proposed`：本文主方法，使用 NSGA-II 同时优化每小时 CPU 开机数、GPU 开机数、时间迁移比例 `defer_ratio` 和空间迁移比例 `migration_ratio`。调度目标包括总成本、平均时延/SLA 和资源协同程度。空间迁移通过外部算力池抽象实现，远端执行任务不计入本地 IT 功率，但会产生远端执行成本、网络能耗和迁移时延惩罚。
 
 ## 时空迁移建模说明
 
@@ -202,6 +207,8 @@ outputs/
 - `energy_bar.png`：各算法总能耗柱状图。
 - `cpu_gpu_utilization.png`：CPU/GPU 利用率对比图。
 - `convergence_curve.png`：NSGA-II 收敛曲线。
+- `ga_convergence_curve.png`：GA 加权适应度收敛曲线。
+- `pso_convergence_curve.png`：PSO 加权适应度收敛曲线。
 - `spatial_migration_bar.png`：各算法远端迁移任务数对比。
 - `load_shift_curve.png`：原始本地负荷与时空迁移后本地负荷对比。
 - `hourly_power_breakdown.csv`：按小时导出的 CPU/GPU IT 功率、制冷功率、固定功率、远端能耗和等效功率。
@@ -225,10 +232,10 @@ outputs/
 - `total_cost`：总成本，包含本地电费、远端迁移成本和可选碳成本。
 - `avg_delay_hours`：平均任务时延，包含远端迁移时延。
 - `sla_violation_rate`：SLA 违约率。
-- `cpu_utilization`：CPU 平均利用率。
-- `gpu_utilization`：GPU 平均利用率。
+- `avg_cpu_utilization`：CPU 平均利用率。
+- `avg_gpu_utilization`：GPU 平均利用率。
 - `load_imbalance`：负载不均衡度。
-- `peak_valley_diff_kw`：本地功率峰谷差。
+- `peak_valley_gap_kw`：本地功率峰谷差。
 - `energy_per_million_tokens`：单位百万 token 能耗。
 - `cost_per_million_tokens`：单位百万 token 成本。
 
@@ -294,7 +301,7 @@ outputs/cross_region_delay_sensitivity.png
 
 - 修改 CPU/GPU 服务器数量、功率、服务率：`config/resource.yaml`
 - 修改 SLA、功率上限、峰时削减、空间迁移参数：`config/base.yaml`
-- 修改 NSGA-II 种群规模、迭代代数、输出路径：`config/experiment.yaml`
+- 修改 NSGA-II 种群规模、GA/PSO 默认规模、迭代代数、输出路径：`config/experiment.yaml`
 - 修改电价输入路径和高低电价阈值：`config/price.yaml`
 
 当前 `.yaml` 文件使用 JSON 兼容写法，因此可以用普通文本编辑器直接修改。

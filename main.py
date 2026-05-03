@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
+import subprocess
 import sys
 
 
@@ -11,7 +11,8 @@ def _use_project_venv_if_available() -> None:
         return
     if Path(sys.executable).resolve() == venv_python.resolve():
         return
-    os.execv(str(venv_python), [str(venv_python), *sys.argv])
+    completed = subprocess.run([str(venv_python), *sys.argv], check=False)
+    sys.exit(completed.returncode)
 
 
 _use_project_venv_if_available()

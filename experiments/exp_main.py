@@ -7,6 +7,8 @@ import pandas as pd
 from experiments.exp_ablation import run_ablation_experiment
 from experiments.exp_sensitivity import run_sensitivity_experiment
 from models.objective import SchedulePlan, simulate_schedule
+from optimizers.ga import run_ga
+from optimizers.pso import run_pso
 from schedulers.baseline_fcfs import build_fcfs_schedule
 from schedulers.baseline_price_only import build_price_only_schedule
 from schedulers.homogeneous_baseline import build_homogeneous_schedule
@@ -23,6 +25,7 @@ from utils.plotting import (
     plot_power_breakdown_stack,
     plot_price_load_curve,
     plot_sensitivity_results,
+    plot_single_objective_convergence,
     plot_spatial_migration_bar,
     plot_time_space_ablation,
     plot_time_space_migration_effect,
@@ -32,7 +35,7 @@ from utils.seed import set_seed
 
 
 def run_main_experiment() -> tuple[pd.DataFrame, dict]:
-    """主实验入口：加载配置和数据，运行四种算法，导出表格与图表。"""
+    """主实验入口：加载配置和数据，运行算法对比，导出表格与图表。"""
     configs = load_all_configs()
     base_cfg = configs["base"]
     price_cfg = configs["price"]
@@ -47,6 +50,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     fcfs_schedule = build_fcfs_schedule(tasks, resource_pool, base_cfg, experiment_cfg)
     price_only_schedule = build_price_only_schedule(hourly_df, tasks, resource_pool, base_cfg, price_cfg, experiment_cfg)
     homogeneous_schedule = build_homogeneous_schedule(hourly_df, resource_pool, base_cfg, experiment_cfg)
+    ga_result = run_ga(hourly_df, tasks, resource_pool, base_cfg, price_cfg, experiment_cfg)
+    pso_result = run_pso(hourly_df, tasks, resource_pool, base_cfg, price_cfg, experiment_cfg)
     proposed_result = run_proposed_scheduler(hourly_df, tasks, resource_pool, base_cfg, price_cfg, experiment_cfg)
 
     # 所有算法统一进入 simulate_schedule，保证指标口径一致。
@@ -54,6 +59,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         ("FCFS", fcfs_schedule, "fcfs"),
         ("Price-Only", price_only_schedule, "price_only"),
         ("Homogeneous-Baseline", homogeneous_schedule, "fcfs"),
+        ("GA", ga_result.best_schedule, "proposed"),
+        ("PSO", pso_result.best_schedule, "proposed"),
         ("Proposed", proposed_result.best_schedule, "proposed"),
     ]
 
@@ -88,6 +95,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     plot_total_energy_bar(results_df, outputs_dir / "energy_bar.png")
     plot_cpu_gpu_utilization(results_df, outputs_dir / "cpu_gpu_utilization.png")
     plot_convergence_curve(proposed_result.convergence_df, outputs_dir / "convergence_curve.png")
+    plot_single_objective_convergence(ga_result.convergence_df, outputs_dir / "ga_convergence_curve.png", "GA Weighted Fitness Convergence")
+    plot_single_objective_convergence(pso_result.convergence_df, outputs_dir / "pso_convergence_curve.png", "PSO Weighted Fitness Convergence")
     plot_spatial_migration_bar(results_df, outputs_dir / "spatial_migration_bar.png")
     plot_load_shift_curve(hourly_df, detailed_runs["Proposed"]["metrics"], outputs_dir / "load_shift_curve.png")
 
@@ -180,6 +189,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "outputs/energy_bar.png",
         "outputs/cpu_gpu_utilization.png",
         "outputs/convergence_curve.png",
+        "outputs/ga_convergence_curve.png",
+        "outputs/pso_convergence_curve.png",
         "outputs/spatial_migration_bar.png",
         "outputs/load_shift_curve.png",
         "outputs/hourly_power_breakdown.csv",
@@ -201,6 +212,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         "tasks": tasks,
         "configs": configs,
         "resource_pool": resource_pool,
+        "ga_result": ga_result,
+        "pso_result": pso_result,
         "proposed_result": proposed_result,
         "ablation_df": ablation_df,
         "sensitivity_df": sensitivity_df,
