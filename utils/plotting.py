@@ -20,16 +20,28 @@ def _configure_plot_fonts() -> None:
 _configure_plot_fonts()
 
 
+def _localize_title(title: str) -> str:
+    title_map = {
+        "GA Weighted Fitness Convergence": "GA加权适应度收敛曲线",
+        "PSO Weighted Fitness Convergence": "PSO加权适应度收敛曲线",
+    }
+    return title_map.get(title, title)
+
+
 def plot_price_load_curve(hourly_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(10, 5))
-    ax1.plot(hourly_df["hour"], hourly_df["price"], color="#b94700", marker="o", label="Electricity Price")
-    ax1.set_xlabel("Hour")
-    ax1.set_ylabel("Price")
+    ax1.plot(hourly_df["hour"], hourly_df["price"], color="#b94700", marker="o", label="分时电价")
+    ax1.set_xlabel("时刻/h")
+    ax1.set_ylabel("电价")
     ax1.grid(True, alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.bar(hourly_df["hour"], hourly_df["arrival_rate"], alpha=0.25, color="#3a6ea5", label="Task Arrivals")
-    ax2.set_ylabel("Hourly Arrivals")
+    ax2.bar(hourly_df["hour"], hourly_df["arrival_rate"], alpha=0.25, color="#3a6ea5", label="任务到达量")
+    ax2.set_ylabel("小时任务到达量")
+
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
 
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -46,11 +58,11 @@ def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
         cmap="viridis",
         alpha=0.8,
     )
-    ax.set_xlabel("Total Cost")
-    ax.set_ylabel("Average Delay (hours)")
-    ax.set_title("Proposed Scheduler Pareto Front")
+    ax.set_xlabel("总运行成本")
+    ax.set_ylabel("平均时延/h")
+    ax.set_title("Proposed调度策略帕累托前沿")
     ax.grid(True, alpha=0.3)
-    fig.colorbar(scatter, ax=ax, label="Load Imbalance")
+    fig.colorbar(scatter, ax=ax, label="负载不均衡度")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
@@ -59,8 +71,8 @@ def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
 def plot_total_energy_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.bar(results_df["algorithm"], results_df["total_energy_kwh"])
-    ax.set_ylabel("Total Energy (kWh)")
-    ax.set_title("Algorithm Energy Comparison")
+    ax.set_ylabel("总能耗/kWh")
+    ax.set_title("不同算法总能耗对比")
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
@@ -71,12 +83,12 @@ def plot_cpu_gpu_utilization(results_df: pd.DataFrame, output_path: str | Path) 
     fig, ax = plt.subplots(figsize=(9, 5))
     x = range(len(results_df))
     width = 0.35
-    ax.bar([value - width / 2 for value in x], results_df["avg_cpu_utilization"], width=width, label="CPU Utilization")
-    ax.bar([value + width / 2 for value in x], results_df["avg_gpu_utilization"], width=width, label="GPU Utilization")
+    ax.bar([value - width / 2 for value in x], results_df["avg_cpu_utilization"], width=width, label="CPU平均利用率")
+    ax.bar([value + width / 2 for value in x], results_df["avg_gpu_utilization"], width=width, label="GPU平均利用率")
     ax.set_xticks(list(x))
     ax.set_xticklabels(results_df["algorithm"])
-    ax.set_ylabel("Average Utilization")
-    ax.set_title("CPU / GPU Utilization Comparison")
+    ax.set_ylabel("平均利用率")
+    ax.set_title("CPU/GPU资源利用率对比")
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -86,12 +98,12 @@ def plot_cpu_gpu_utilization(results_df: pd.DataFrame, output_path: str | Path) 
 
 def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(convergence_df["generation"], convergence_df["best_total_cost"], label="Best Cost Objective")
-    ax.plot(convergence_df["generation"], convergence_df["best_delay_objective"], label="Best Delay Objective")
-    ax.plot(convergence_df["generation"], convergence_df["best_balance_objective"], label="Best Balance Objective")
-    ax.set_xlabel("Generation")
-    ax.set_ylabel("Objective Value")
-    ax.set_title("NSGA-II Convergence Curve")
+    ax.plot(convergence_df["generation"], convergence_df["best_total_cost"], label="最优成本目标")
+    ax.plot(convergence_df["generation"], convergence_df["best_delay_objective"], label="最优时延目标")
+    ax.plot(convergence_df["generation"], convergence_df["best_balance_objective"], label="最优负载均衡目标")
+    ax.set_xlabel("迭代代数")
+    ax.set_ylabel("目标函数值")
+    ax.set_title("NSGA-II收敛曲线")
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -104,12 +116,12 @@ def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path:
         return
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.plot(convergence_df["generation"], convergence_df["best_fitness"], label="Best Fitness")
+    ax.plot(convergence_df["generation"], convergence_df["best_fitness"], label="最优适应度")
     if "avg_fitness" in convergence_df.columns:
-        ax.plot(convergence_df["generation"], convergence_df["avg_fitness"], label="Average Fitness", alpha=0.75)
-    ax.set_xlabel("Generation")
-    ax.set_ylabel("Weighted Fitness")
-    ax.set_title(title)
+        ax.plot(convergence_df["generation"], convergence_df["avg_fitness"], label="平均适应度", alpha=0.75)
+    ax.set_xlabel("迭代代数")
+    ax.set_ylabel("加权适应度")
+    ax.set_title(_localize_title(title))
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -120,17 +132,21 @@ def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path:
 
 def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    x_labels = ["Full", "No Spatial", "No Time", "No Hetero", "No Priority"][: len(ablation_df)]
-    ax1.bar(x_labels, ablation_df["total_cost"], color="#2f6f73", alpha=0.85, label="Total Cost")
-    ax1.set_ylabel("Total Cost")
+    x_labels = ["完整方案", "无空间迁移", "无时间迁移", "无异构感知", "无优先级"][: len(ablation_df)]
+    ax1.bar(x_labels, ablation_df["total_cost"], color="#2f6f73", alpha=0.85, label="总运行成本")
+    ax1.set_ylabel("总运行成本")
     ax1.tick_params(axis="x", rotation=15)
     ax1.grid(True, axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x_labels, ablation_df["avg_delay_hours"], color="#c2410c", marker="o", label="Average Delay")
-    ax2.set_ylabel("Average Delay (hours)")
+    ax2.plot(x_labels, ablation_df["avg_delay_hours"], color="#c2410c", marker="o", label="平均时延")
+    ax2.set_ylabel("平均时延/h")
 
-    fig.suptitle("Ablation Study: Cost and Delay")
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
+
+    fig.suptitle("消融实验成本与时延对比")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
@@ -141,21 +157,25 @@ def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Pa
     if "scenario" in sensitivity_df.columns:
         x_labels = sensitivity_df["scenario"].astype(str).tolist()
     else:
-        x_labels = [f"Scenario {idx + 1}" for idx in range(len(sensitivity_df))]
+        x_labels = [f"场景{idx + 1}" for idx in range(len(sensitivity_df))]
     x = list(range(len(sensitivity_df)))
 
-    ax1.plot(x, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="Total Cost")
-    ax1.set_ylabel("Total Cost")
+    ax1.plot(x, sensitivity_df["total_cost"], marker="o", color="#0b7285", label="总运行成本")
+    ax1.set_ylabel("总运行成本")
     ax1.set_xticks(x)
     ax1.set_xticklabels(x_labels)
     ax1.tick_params(axis="x", rotation=18)
     ax1.grid(True, alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x, sensitivity_df["sla_violation_rate"], marker="s", color="#b42318", label="SLA Violation")
-    ax2.set_ylabel("SLA Violation Rate")
+    ax2.plot(x, sensitivity_df["sla_violation_rate"], marker="s", color="#b42318", label="SLA违约率")
+    ax2.set_ylabel("SLA违约率")
 
-    fig.suptitle("Sensitivity Study: Cost and SLA")
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
+
+    fig.suptitle("灵敏度实验成本与SLA对比")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
@@ -173,22 +193,22 @@ def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_pat
     x = list(range(len(selected)))
 
     fig, ax1 = plt.subplots(figsize=(8, 5))
-    ax1.bar(x, selected["remote_task_count"], color="#3b5bdb", alpha=0.85, label="Remote Task Count")
+    ax1.bar(x, selected["remote_task_count"], color="#3b5bdb", alpha=0.85, label="远端迁移任务数")
     ax1.set_xlabel("跨区时延场景")
-    ax1.set_ylabel("Remote Task Count")
+    ax1.set_ylabel("远端迁移任务数")
     ax1.set_xticks(x)
     ax1.set_xticklabels(x_labels)
     ax1.grid(True, axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x, selected["sla_violation_rate"], color="#b42318", marker="o", label="SLA Violation Rate")
-    ax2.set_ylabel("SLA Violation Rate")
+    ax2.plot(x, selected["sla_violation_rate"], color="#b42318", marker="o", label="SLA违约率")
+    ax2.set_ylabel("SLA违约率")
 
     handles1, labels1 = ax1.get_legend_handles_labels()
     handles2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
 
-    fig.suptitle("Cross-Region Delay Sensitivity")
+    fig.suptitle("跨区时延敏感性分析")
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
@@ -198,8 +218,8 @@ def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_pat
 def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.bar(results_df["algorithm"], results_df["remote_task_count"], color="#3b5bdb")
-    ax.set_ylabel("Remote Task Count")
-    ax.set_title("Spatial Migration Comparison")
+    ax.set_ylabel("远端迁移任务数")
+    ax.set_title("空间迁移任务数对比")
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
@@ -209,11 +229,11 @@ def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path
 def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(10, 5))
     hours = hourly_df["hour"]
-    ax.plot(hours, metrics.hourly_power_kw, marker="o", label="Local Power")
-    ax.plot(hours, metrics.hourly_effective_power_kw, marker="s", label="Local + Remote Energy Equivalent")
-    ax.set_xlabel("Hour")
-    ax.set_ylabel("Power / Energy Equivalent (kW)")
-    ax.set_title("Local Load Curve With Spatial Migration")
+    ax.plot(hours, metrics.hourly_power_kw, marker="o", label="本地功率")
+    ax.plot(hours, metrics.hourly_effective_power_kw, marker="s", label="本地功率+远端等效功率")
+    ax.set_xlabel("时刻/h")
+    ax.set_ylabel("功率/kW")
+    ax.set_title("时空迁移下本地负荷变化曲线")
     ax.grid(True, alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -224,9 +244,9 @@ def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | P
 def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     scenario_order = ["完整Proposed", "无空间迁移", "无时间迁移"]
     label_map = {
-        "完整Proposed": "Time+Space",
-        "无空间迁移": "Time Only",
-        "无时间迁移": "Space Only",
+        "完整Proposed": "时空迁移",
+        "无空间迁移": "仅时间迁移",
+        "无时间迁移": "仅空间迁移",
     }
     selected = ablation_df[ablation_df["algorithm"].isin(scenario_order)].copy()
     if selected.empty:
@@ -236,15 +256,19 @@ def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path)
     labels = [label_map[str(value)] for value in selected["algorithm"]]
 
     fig, ax1 = plt.subplots(figsize=(8, 5))
-    ax1.bar(labels, selected["total_cost"], color="#1864ab", alpha=0.85)
-    ax1.set_ylabel("Total Cost")
+    ax1.bar(labels, selected["total_cost"], color="#1864ab", alpha=0.85, label="总运行成本")
+    ax1.set_ylabel("总运行成本")
     ax1.grid(True, axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(labels, selected["avg_delay_hours"], color="#d9480f", marker="o")
-    ax2.set_ylabel("Average Delay (hours)")
+    ax2.plot(labels, selected["avg_delay_hours"], color="#d9480f", marker="o", label="平均时延")
+    ax2.set_ylabel("平均时延/h")
 
-    fig.suptitle("Time-Space Migration Ablation")
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
+
+    fig.suptitle("时空迁移消融实验")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
@@ -258,17 +282,21 @@ def plot_time_space_migration_effect(effect_df: pd.DataFrame, output_path: str |
     x = list(range(len(effect_df)))
 
     fig, ax1 = plt.subplots(figsize=(8, 5))
-    ax1.bar(x, effect_df["total_cost"], color="#1864ab", alpha=0.85, label="Total Cost")
-    ax1.set_ylabel("Total Cost")
+    ax1.bar(x, effect_df["total_cost"], color="#1864ab", alpha=0.85, label="总运行成本")
+    ax1.set_ylabel("总运行成本")
     ax1.set_xticks(x)
     ax1.set_xticklabels(x_labels)
     ax1.grid(True, axis="y", alpha=0.3)
 
     ax2 = ax1.twinx()
-    ax2.plot(x, effect_df["avg_delay_hours"], color="#d9480f", marker="o", label="Average Delay")
-    ax2.set_ylabel("Average Delay (hours)")
+    ax2.plot(x, effect_df["avg_delay_hours"], color="#d9480f", marker="o", label="平均时延")
+    ax2.set_ylabel("平均时延/h")
 
-    fig.suptitle("Time-Space Migration Effect")
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(handles1 + handles2, labels1 + labels2, loc="upper left")
+
+    fig.suptitle("时空迁移效果对比")
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)
@@ -289,10 +317,10 @@ def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: st
     hours = power_breakdown_df["hour"].tolist()
     bottom = [0.0 for _ in hours]
     stacks = [
-        ("cpu_it_power_kw", "CPU IT Power"),
-        ("gpu_it_power_kw", "GPU IT Power"),
-        ("cooling_power_kw", "Cooling Power"),
-        ("fixed_power_kw", "Fixed Power"),
+        ("cpu_it_power_kw", "CPU IT功率"),
+        ("gpu_it_power_kw", "GPU IT功率"),
+        ("cooling_power_kw", "制冷功率"),
+        ("fixed_power_kw", "固定功率"),
     ]
 
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -301,10 +329,10 @@ def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: st
         ax.bar(hours, values, bottom=bottom, label=label)
         bottom = [base + value for base, value in zip(bottom, values)]
 
-    ax.set_xlabel("Hour")
-    ax.set_ylabel("Power (kW)")
+    ax.set_xlabel("时刻/h")
+    ax.set_ylabel("功率/kW")
     ax.set_xticks(hours)
-    ax.set_title("Hourly Power Breakdown")
+    ax.set_title("小时级功率分解")
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend()
     fig.tight_layout()
@@ -320,10 +348,10 @@ def plot_rolling_vs_static(rolling_df: pd.DataFrame, output_path: str | Path) ->
 
     algorithms = selected["algorithm"].astype(str).tolist()
     metrics = [
-        ("total_cost", "Total Cost"),
-        ("avg_delay_hours", "Average Delay (hours)"),
-        ("sla_violation_rate", "SLA Violation Rate"),
-        ("remote_task_count", "Remote Task Count"),
+        ("total_cost", "总运行成本"),
+        ("avg_delay_hours", "平均时延/h"),
+        ("sla_violation_rate", "SLA违约率"),
+        ("remote_task_count", "远端迁移任务数"),
     ]
 
     fig, axes = plt.subplots(2, 2, figsize=(10, 7))
@@ -333,7 +361,7 @@ def plot_rolling_vs_static(rolling_df: pd.DataFrame, output_path: str | Path) ->
         ax.grid(True, axis="y", alpha=0.3)
         ax.tick_params(axis="x", rotation=12)
 
-    fig.suptitle("Rolling-Proposed vs Static-Proposed")
+    fig.suptitle("滚动优化与静态优化对比")
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200)

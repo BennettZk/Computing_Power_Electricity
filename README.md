@@ -261,7 +261,7 @@ outputs/
 - `rolling_vs_static.png`：Rolling-Proposed 与 Static-Proposed 的成本、时延、SLA 和远端迁移任务数对比。
 - `ablation_results.png`：消融实验成本与时延对比。
 - `sensitivity_results.png`：灵敏度实验成本与 SLA 对比。
-- `cross_region_delay_sensitivity.png`：低/中/高跨区时延下远端迁移任务数和平均时延对比。
+- `cross_region_delay_sensitivity.png`：低/中/高跨区时延下远端迁移任务数和 SLA 违约率对比。
 
 扩展实验表格：
 
