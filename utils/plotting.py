@@ -28,6 +28,25 @@ def _localize_title(title: str) -> str:
     return title_map.get(title, title)
 
 
+def _localize_algorithm_labels(labels) -> list[str]:
+    label_map = {
+        "FCFS": "FCFS",
+        "Price-Only": "仅电价响应",
+        "Homogeneous-Baseline": "同构基线",
+        "GA": "GA",
+        "PSO": "PSO",
+        "Proposed": "Proposed",
+        "Static-Proposed": "静态优化",
+        "Rolling-Proposed": "滚动优化",
+        "完整Proposed": "完整方案",
+        "无空间迁移": "无空间迁移",
+        "无时间迁移": "无时间迁移",
+        "无异构感知": "无异构感知",
+        "无优先级调度": "无优先级调度",
+    }
+    return [label_map.get(str(label), str(label)) for label in labels]
+
+
 def plot_price_load_curve(hourly_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(10, 5))
     ax1.plot(hourly_df["hour"], hourly_df["price"], color="#b94700", marker="o", label="分时电价")
@@ -70,7 +89,11 @@ def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
 
 def plot_total_energy_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(results_df["algorithm"], results_df["total_energy_kwh"])
+    x = list(range(len(results_df)))
+    labels = _localize_algorithm_labels(results_df["algorithm"].astype(str).tolist())
+    ax.bar(x, results_df["total_energy_kwh"])
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
     ax.set_ylabel("总能耗/kWh")
     ax.set_title("不同算法总能耗对比")
     ax.grid(True, axis="y", alpha=0.3)
@@ -85,8 +108,9 @@ def plot_cpu_gpu_utilization(results_df: pd.DataFrame, output_path: str | Path) 
     width = 0.35
     ax.bar([value - width / 2 for value in x], results_df["avg_cpu_utilization"], width=width, label="CPU平均利用率")
     ax.bar([value + width / 2 for value in x], results_df["avg_gpu_utilization"], width=width, label="GPU平均利用率")
+    labels = _localize_algorithm_labels(results_df["algorithm"].astype(str).tolist())
     ax.set_xticks(list(x))
-    ax.set_xticklabels(results_df["algorithm"])
+    ax.set_xticklabels(labels)
     ax.set_ylabel("平均利用率")
     ax.set_title("CPU/GPU资源利用率对比")
     ax.grid(True, axis="y", alpha=0.3)
@@ -132,7 +156,9 @@ def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path:
 
 def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    x_labels = ["完整方案", "无空间迁移", "无时间迁移", "无异构感知", "无优先级"][: len(ablation_df)]
+    x_labels = _localize_algorithm_labels(
+        ["完整Proposed", "无空间迁移", "无时间迁移", "无异构感知", "无优先级调度"][: len(ablation_df)]
+    )
     ax1.bar(x_labels, ablation_df["total_cost"], color="#2f6f73", alpha=0.85, label="总运行成本")
     ax1.set_ylabel("总运行成本")
     ax1.tick_params(axis="x", rotation=15)
@@ -217,10 +243,28 @@ def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_pat
 
 def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(results_df["algorithm"], results_df["remote_task_count"], color="#3b5bdb")
+    x = list(range(len(results_df)))
+    labels = _localize_algorithm_labels(results_df["algorithm"].astype(str).tolist())
+    values = results_df["remote_task_count"].astype(float).tolist()
+    bars = ax.bar(x, values, color="#3b5bdb")
+    max_value = max(values) if values else 0.0
+    y_offset = max(max_value * 0.02, 0.05)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
     ax.set_ylabel("远端迁移任务数")
-    ax.set_title("空间迁移任务数对比")
+    ax.set_title("不同算法空间迁移任务数对比")
     ax.grid(True, axis="y", alpha=0.3)
+    if max_value > 0:
+        ax.set_ylim(top=max_value * 1.15)
+    else:
+        ax.set_ylim(0, 1)
+
+    for bar, value in zip(bars, values):
+        label = str(int(value)) if float(value).is_integer() else f"{value:.2f}"
+        y = y_offset if value == 0 else value + y_offset
+        ax.text(bar.get_x() + bar.get_width() / 2, y, label, ha="center", va="bottom")
+
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
     plt.close(fig)
@@ -243,17 +287,12 @@ def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | P
 
 def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
     scenario_order = ["完整Proposed", "无空间迁移", "无时间迁移"]
-    label_map = {
-        "完整Proposed": "时空迁移",
-        "无空间迁移": "仅时间迁移",
-        "无时间迁移": "仅空间迁移",
-    }
     selected = ablation_df[ablation_df["algorithm"].isin(scenario_order)].copy()
     if selected.empty:
         return
     selected["algorithm"] = pd.Categorical(selected["algorithm"], categories=scenario_order, ordered=True)
     selected = selected.sort_values("algorithm")
-    labels = [label_map[str(value)] for value in selected["algorithm"]]
+    labels = _localize_algorithm_labels(selected["algorithm"].astype(str).tolist())
 
     fig, ax1 = plt.subplots(figsize=(8, 5))
     ax1.bar(labels, selected["total_cost"], color="#1864ab", alpha=0.85, label="总运行成本")
@@ -346,7 +385,7 @@ def plot_rolling_vs_static(rolling_df: pd.DataFrame, output_path: str | Path) ->
     if selected.empty:
         return
 
-    algorithms = selected["algorithm"].astype(str).tolist()
+    algorithms = _localize_algorithm_labels(selected["algorithm"].astype(str).tolist())
     metrics = [
         ("total_cost", "总运行成本"),
         ("avg_delay_hours", "平均时延/h"),
