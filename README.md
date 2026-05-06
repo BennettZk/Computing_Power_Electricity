@@ -362,6 +362,55 @@ outputs/cross_region_delay_sensitivity.png
 
 当前 `.yaml` 文件使用 JSON 兼容写法，因此可以用普通文本编辑器直接修改。
 
+## 大规模仿真数据与运行时间测试
+
+默认主实验仍使用 `config/experiment.yaml` 中的 `paths.tasks_path`，也就是 `data/synthetic/tasks.csv`。该文件当前是约 4474 个任务的小规模数据，用于保证论文主实验稳定、快速、可复现。下面的大规模数据生成和 benchmark 脚本只用于扩展实验或运行时间压力测试，不会改变 `main.py` 的默认行为。
+
+生成 10 倍负载任务数据：
+
+```powershell
+python scripts/generate_large_synthetic.py --scale 10 --output data/synthetic/tasks_10x.csv
+```
+
+生成指定任务数量的数据：
+
+```powershell
+python scripts/generate_large_synthetic.py --target-tasks 100000 --output data/synthetic/tasks_100000.csv
+```
+
+生成接近 64MB 的任务 CSV：
+
+```powershell
+python scripts/generate_large_synthetic.py --target-mb 64 --output data/synthetic/tasks_64mb.csv
+```
+
+生成脚本会读取现有 24 小时负载、电价和碳因子曲线，复用 `models.task.generate_synthetic_tasks` 的字段结构，输出与 `models.task.load_tasks_csv` 兼容的标准任务 CSV。生成报告写入：
+
+```text
+outputs/large_synthetic_report.txt
+```
+
+报告包含任务总数、CSV 文件大小、三类任务数量、CPU/GPU 任务数量、各小时任务分布，以及平均 CPU/GPU/内存需求。
+
+测试单轮仿真运行时间建议先用 quick 模式：
+
+```powershell
+python scripts/benchmark_runtime.py --tasks-path data/synthetic/tasks_10x.csv --mode quick --repeat 1
+python scripts/benchmark_runtime.py --tasks-path data/synthetic/tasks_64mb.csv --mode quick --repeat 1
+```
+
+quick 模式只计时核心步骤：数据加载、FCFS schedule 构建、FCFS 单次仿真、Price-Only schedule 构建、Price-Only 单次仿真，以及一个简化 Proposed 调度方案的单次仿真。它不会默认运行完整 NSGA-II、GA、PSO、消融实验、灵敏度实验或滚动窗口实验。
+
+benchmark 结果默认写入：
+
+```text
+outputs/runtime_benchmark.csv
+```
+
+输出字段包括 `scale_or_tasks_path`、`task_count`、`csv_size_mb`、`mode`、`step_name`、`elapsed_seconds` 和 `repeat_index`。
+
+full 模式会调用完整 `experiments.exp_main.run_main_experiment()`，会重复运行 NSGA-II、GA、PSO、消融、滚动窗口和灵敏度实验，并覆盖常规实验输出。大规模数据尤其是接近 64MB 的 CSV 不建议直接用于 full 模式，建议先用 quick benchmark 判断单轮仿真耗时，再决定是否把大规模数据接入主实验。
+
 ## 模型简化说明
 
 当前版本做了以下简化，目的是保证本科论文实验可解释、可运行、可出图：

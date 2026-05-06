@@ -1,0 +1,8 @@
+﻿scale_or_tasks_path,task_count,csv_size_mb,mode,step_name,elapsed_seconds,repeat_index
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,data_loading,0.005759299965575337,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_fcfs_schedule,0.0041538000805303454,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_fcfs,0.004531200043857098,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_price_only_schedule,0.004691599984653294,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_price_only,0.003098099958151579,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_quick_proposed_simplified_schedule,0.0005544000305235386,1
+E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_quick_proposed_simplified,0.002729400061070919,1
