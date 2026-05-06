@@ -269,6 +269,14 @@ outputs/
 - `outputs/rolling_results.csv`：Static-Proposed 与 Rolling-Proposed 总体结果及各滚动窗口结果。
 - `outputs/sensitivity_results.csv`：灵敏度实验结果。
 
+## 结果表格中文表头说明
+
+项目输入数据仍使用英文表头，例如 `data/hourly_input.csv`、`data/processed/hourly_profile.csv`、`data/synthetic/tasks.csv` 和 `data/real/tasks.csv`。这些字段会被程序直接读取，不能改成中文，否则会导致加载和仿真逻辑报错。
+
+论文查看和整理用的输出结果 CSV 使用中文表头导出，包括 `results.csv`、`outputs/proposed_pareto.csv`、`outputs/ablation_results.csv`、`outputs/rolling_results.csv`、`outputs/sensitivity_results.csv`、`outputs/hourly_power_breakdown.csv` 和 `outputs/runtime_benchmark.csv`。导出编码为 `utf-8-sig`，Excel 直接打开时中文表头不应乱码。
+
+程序内部的 DataFrame 计算和图表绘制仍使用英文列名。若后续脚本需要继续读取某些结果数据，建议直接复用内部英文 DataFrame，或在读取中文表头 CSV 后自行做反向映射，不要把中文表头结果文件当作项目输入文件。
+
 ## 结果字段说明
 
 `results.csv` 和 `outputs/proposed_pareto.csv` 中包含常规指标：

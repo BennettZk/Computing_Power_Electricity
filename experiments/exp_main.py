@@ -15,7 +15,7 @@ from schedulers.baseline_price_only import build_price_only_schedule
 from schedulers.homogeneous_baseline import build_homogeneous_schedule
 from schedulers.proposed_scheduler import run_proposed_scheduler
 from utils.io_utils import ensure_inputs, ensure_output_dirs, load_all_configs, load_resource_pool, write_summary
-from utils.metrics import summarize_result_rows
+from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, summarize_result_rows
 from utils.plotting import (
     plot_ablation_results,
     plot_convergence_curve,
@@ -84,12 +84,11 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
 
     results_df = summarize_result_rows(result_rows)
     results_csv_path = Path(experiment_cfg["paths"]["results_csv"])
-    results_df.to_csv(results_csv_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(results_df, results_csv_path, RESULT_CSV_COLUMN_MAPPING)
 
     # Proposed 的完整帕累托前沿单独保存，便于论文中绘制成本-时延散点图。
     pareto_csv_path = Path(experiment_cfg["paths"]["pareto_csv"])
-    pareto_csv_path.parent.mkdir(parents=True, exist_ok=True)
-    proposed_result.pareto_df.to_csv(pareto_csv_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(proposed_result.pareto_df, pareto_csv_path, RESULT_CSV_COLUMN_MAPPING)
 
     # 自动导出论文实验常用图表。
     plot_price_load_curve(hourly_df, outputs_dir / "price_load_curve.png")
@@ -104,7 +103,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
 
     proposed_metrics = detailed_runs["Proposed"]["metrics"]
     power_breakdown_df = pd.DataFrame(proposed_metrics.hourly_power_breakdown)
-    power_breakdown_df.to_csv(outputs_dir / "hourly_power_breakdown.csv", index=False, encoding="utf-8-sig")
+    export_csv_chinese(power_breakdown_df, outputs_dir / "hourly_power_breakdown.csv", RESULT_CSV_COLUMN_MAPPING)
     plot_power_breakdown_stack(power_breakdown_df, outputs_dir / "power_breakdown_stack.png")
 
     ablation_df = run_ablation_experiment(
@@ -118,7 +117,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         homogeneous_schedule=homogeneous_schedule,
     )
     ablation_csv_path = outputs_dir / "ablation_results.csv"
-    ablation_df.to_csv(ablation_csv_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(ablation_df, ablation_csv_path, RESULT_CSV_COLUMN_MAPPING)
     plot_ablation_results(ablation_df, outputs_dir / "ablation_results.png")
     plot_time_space_ablation(ablation_df, outputs_dir / "time_space_ablation.png")
 
@@ -171,7 +170,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         static_schedule=proposed_result.best_schedule,
     )
     rolling_csv_path = outputs_dir / "rolling_results.csv"
-    rolling_result.results_df.to_csv(rolling_csv_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(rolling_result.results_df, rolling_csv_path, RESULT_CSV_COLUMN_MAPPING)
     plot_rolling_vs_static(rolling_result.results_df, outputs_dir / "rolling_vs_static.png")
 
     sensitivity_df = run_sensitivity_experiment(
@@ -183,7 +182,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
         experiment_cfg=experiment_cfg,
     )
     sensitivity_csv_path = outputs_dir / "sensitivity_results.csv"
-    sensitivity_df.to_csv(sensitivity_csv_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(sensitivity_df, sensitivity_csv_path, RESULT_CSV_COLUMN_MAPPING)
     plot_sensitivity_results(sensitivity_df, outputs_dir / "sensitivity_results.png")
     plot_cross_region_delay_sensitivity(sensitivity_df, outputs_dir / "cross_region_delay_sensitivity.png")
 

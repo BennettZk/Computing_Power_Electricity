@@ -17,6 +17,7 @@ from models.task import load_tasks_csv
 from schedulers.baseline_fcfs import build_fcfs_schedule
 from schedulers.baseline_price_only import build_price_only_schedule
 from utils.io_utils import ensure_hourly_profile, load_all_configs, load_resource_pool
+from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese
 
 
 def _project_path(path: str | Path) -> Path:
@@ -186,9 +187,8 @@ def main() -> None:
 
     rows = run_quick_benchmark(tasks_path, args.repeat) if args.mode == "quick" else run_full_benchmark(tasks_path, args.repeat)
     output_path = _project_path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     benchmark_df = pd.DataFrame(rows)
-    benchmark_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+    export_csv_chinese(benchmark_df, output_path, RESULT_CSV_COLUMN_MAPPING)
 
     print(f"Benchmark written to: {output_path}")
     print(benchmark_df.to_string(index=False))
