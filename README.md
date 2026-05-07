@@ -219,6 +219,84 @@ python scripts/prepare_uploaded_case_dataset.py --replace-main-inputs
 
 该模式会先备份 `data/synthetic/tasks.csv` 和 `data/hourly_input.csv`，再复制清洗后的真实案例输入，并删除 `data/processed/hourly_profile.csv` 缓存，避免继续读取旧小时曲线。默认模式不会执行这些替换。
 
+## 真实集群级数据的保留与使用方式
+
+上传的真实案例数据是集群级调度数据，原始任务规模远高于本项目默认的单数据中心等效资源规模。如果直接把全量真实任务接入默认 `main.py`，可能出现 SLA 违约率接近 1、任务完成率很低、空间迁移和 GPU/token 指标不明显的结果。这是资源规模和任务规模不匹配造成的，不代表程序崩溃，也不应作为论文主实验算法优劣结论。
+
+项目保留三种真实数据场景：
+
+- `real_5k`：真实负载趋势缩放版，用于快速验证。
+- `real_10k`：真实负载趋势增强版，用于扩展实验。
+- `real_full`：原始全量真实数据，用于压力测试和模型适用边界分析。
+
+生成真实缩放场景：
+
+```powershell
+python scripts/build_real_scenarios.py --target-sizes 5000 10000 full
+```
+
+也可以显式指定输入：
+
+```powershell
+python scripts/build_real_scenarios.py --input data/real_case/server_tasks_24h.csv --target-sizes 5000 10000 full
+```
+
+脚本会生成：
+
+```text
+data/real_scaled/tasks_5k.csv
+data/real_scaled/tasks_10k.csv
+data/real_scaled/tasks_full.csv
+data/real_scaled/hourly_input_5k.csv
+data/real_scaled/hourly_input_10k.csv
+data/real_scaled/hourly_input_full.csv
+outputs/real_scaled_report.txt
+```
+
+这些缩放版任务会保留真实小时级负载趋势，同时补齐 GPU、Token、可迁移任务和迁移时延字段，使 CPU/GPU 异构、Token 任务、空间迁移和跨区时延分析能够体现出来。默认 `main.py` 仍使用 `data/synthetic/tasks.csv` 和 `data/hourly_input.csv`，不会自动切换到真实缩放数据。
+
+推荐运行流程：
+
+```powershell
+python scripts/build_real_scenarios.py
+python run_real_quick.py --scenario 5k
+python run_real_quick.py --scenario 10k
+python run_real_quick.py --scenario full --stress
+```
+
+也可以运行压力测试入口：
+
+```powershell
+python run_real_stress.py
+```
+
+真实 quick 输出位于：
+
+```text
+outputs/real_quick/results_real_quick.csv
+outputs/real_quick/results_real_quick_cn.csv
+outputs/real_quick/summary_real_quick.txt
+outputs/real_quick/energy_bar.png
+outputs/real_quick/cpu_gpu_utilization.png
+outputs/real_quick/spatial_migration_bar.png
+```
+
+真实 stress 输出位于：
+
+```text
+outputs/real_stress/results_real_stress.csv
+outputs/real_stress/results_real_stress_cn.csv
+outputs/real_stress/summary_real_stress.txt
+```
+
+`results_real_quick.csv` 和 `results_real_stress.csv` 使用英文表头，便于后续程序继续读取；带 `_cn.csv` 后缀的是中文展示版，不要把中文表头结果文件作为程序输入。
+
+论文中建议表述：
+
+```text
+本文基于真实集群级数据提取小时级负载波动趋势，并构建与单数据中心资源规模相匹配的缩放实验场景；原始全量数据用于压力测试，以分析模型在极端高负载条件下的适用边界。
+```
+
 ## 算法说明
 
 `FCFS`：先来先服务基线。它根据任务到达顺序执行任务，不考虑分时电价，也不启用空间迁移。

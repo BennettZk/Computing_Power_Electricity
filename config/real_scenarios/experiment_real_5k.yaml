@@ -1,0 +1,36 @@
+{
+  "seed": 42,
+  "paths": {
+    "tasks_path": "data/real_scaled/tasks_5k.csv",
+    "hourly_input_path": "data/real_scaled/hourly_input_5k.csv",
+    "outputs_dir": "outputs/real_quick",
+    "results_csv": "outputs/real_quick/results_real_quick.csv",
+    "summary_txt": "outputs/real_quick/summary_real_quick.txt",
+    "pareto_csv": "outputs/real_quick/proposed_pareto_real_5k.csv"
+  },
+  "optimizer": {
+    "algorithm": "nsga2",
+    "pop_size": 18,
+    "n_gen": 6,
+    "defer_ratio_levels": 10,
+    "migration_ratio_levels": 10,
+    "cpu_min_active": 8,
+    "gpu_min_active": 2,
+    "ga_pop_size": 16,
+    "ga_n_gen": 6,
+    "ga_crossover_prob": 0.85,
+    "ga_mutation_rate": 0.01,
+    "ga_tournament_size": 3,
+    "pso_swarm_size": 16,
+    "pso_n_iter": 6,
+    "pso_w": 0.7,
+    "pso_c1": 1.5,
+    "pso_c2": 1.5
+  },
+  "dispatch": {
+    "fcfs_headroom": 1.3,
+    "price_response_discount": 0.35,
+    "price_response_release_bonus": 0.25,
+    "deadline_guard_slots": 1
+  }
+}

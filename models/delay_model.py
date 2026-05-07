@@ -21,10 +21,17 @@ def erlang_c(arrival_rate: float, service_rate: float, servers: int) -> float:
         return 1.0
 
     a = arrival_rate / service_rate
-    sum_terms = sum((a ** n) / _factorial(n) for n in range(servers))
-    last_term = (a ** servers) / (_factorial(servers) * (1.0 - rho))
-    p0 = 1.0 / (sum_terms + last_term)
-    return max(0.0, min(1.0, last_term * p0))
+    if a == 0.0:
+        return 0.0
+
+    # Use log-sum-exp to avoid overflow when real-scaled scenarios use hundreds of servers.
+    log_terms = [n * math.log(a) - math.lgamma(n + 1) for n in range(servers)]
+    log_last = servers * math.log(a) - math.lgamma(servers + 1) - math.log(1.0 - rho)
+    max_log = max(max(log_terms), log_last)
+    scaled_sum = sum(math.exp(value - max_log) for value in log_terms)
+    scaled_last = math.exp(log_last - max_log)
+    probability = scaled_last / (scaled_sum + scaled_last)
+    return max(0.0, min(1.0, probability))
 
 
 def mmc_average_waiting_time_hours(arrival_rate: float, service_rate: float, servers: int) -> float:
