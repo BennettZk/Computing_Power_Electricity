@@ -1,0 +1,16 @@
+﻿strategy,region,export_tokens,share
+No-Export,Asia,0.0,0.0
+No-Export,Europe,0.0,0.0
+No-Export,America,0.0,0.0
+Power-Margin-Only,Asia,964076.3130672344,0.3333333333333333
+Power-Margin-Only,Europe,964076.3130672344,0.3333333333333333
+Power-Margin-Only,America,964076.3130672344,0.3333333333333333
+Price-Driven,Asia,0.0,0.0
+Price-Driven,Europe,0.0,0.0
+Price-Driven,America,2558395.65180275,1.0
+Latency-Aware,Asia,2120967.888747916,0.8
+Latency-Aware,Europe,397681.4791402342,0.14999999999999997
+Latency-Aware,America,132560.49304674476,0.05
+RH-TEO,Asia,1520679.7722829483,0.3806022961396012
+RH-TEO,Europe,2474776.3447899176,0.6193977038603987
+RH-TEO,America,0.0,0.0

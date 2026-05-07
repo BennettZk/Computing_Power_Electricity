@@ -1,0 +1,13 @@
+Token export optimization summary
+===================================
+This is an extended Token export scenario derived from the fused NBSDC power margin.
+NBSDC source data is not treated as containing real Token request records.
+
+Token capacity coefficient: 1000000
+Rolling window size: 4 hours
+Best strategy by net profit: RH-TEO
+Best strategy net profit: 3.697494
+RH-TEO total export tokens: 3995456.12
+RH-TEO SLA violation rate: 0.000000
+
+Generated plots: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity.

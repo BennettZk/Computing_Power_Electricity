@@ -1,0 +1,15 @@
+NBSDC three-layer fusion summary
+======================================
+Cluster records: 288
+Server raw records: 51321
+Server 24h task records: 51321
+Chip DVFS records: 21504
+Average price: 41.6769
+Average hourly task arrivals: 2138.38
+Average actual chip power: 715.4670 W
+Average power margin norm: 0.2008
+Max power margin norm: 0.4556
+alpha: 0.5
+beta: 0.5
+
+The fused power margin is a normalized scenario variable derived from cluster power cap, server load, and chip power response.

@@ -1,0 +1,30 @@
+{
+  "token_per_margin_unit": 1000000,
+  "base_token_sla_hours": 0.3,
+  "window_size_hours": 4,
+  "ramp_limit_ratio": 0.35,
+  "latency_penalty_weight": 1.0,
+  "sla_penalty_weight": 5.0,
+  "ramp_penalty_weight": 0.5,
+  "energy_cost_weight": 1.0,
+  "regions": {
+    "Asia": {
+      "timezone_offset": 0,
+      "latency_hours": 0.02,
+      "demand_peak_hours": [9, 10, 11, 14, 15, 16],
+      "price_per_million_tokens": 0.8
+    },
+    "Europe": {
+      "timezone_offset": -7,
+      "latency_hours": 0.10,
+      "demand_peak_hours": [16, 17, 18, 19, 20, 21],
+      "price_per_million_tokens": 1.0
+    },
+    "America": {
+      "timezone_offset": -13,
+      "latency_hours": 0.18,
+      "demand_peak_hours": [20, 21, 22, 23, 0, 1],
+      "price_per_million_tokens": 1.2
+    }
+  }
+}

@@ -8,70 +8,54 @@ import pandas as pd
 
 RESULT_CSV_COLUMN_MAPPING = {
     "algorithm": "算法",
+    "strategy": "策略",
     "scenario": "场景",
-    "total_energy_kwh": "总能耗/kWh",
-    "total_cost": "总成本",
-    "total_carbon": "总碳排放/kg",
-    "avg_delay_hours": "平均时延/h",
-    "sla_violation_rate": "SLA违约率",
-    "completion_rate": "任务完成率",
-    "avg_cpu_utilization": "CPU平均利用率",
-    "avg_gpu_utilization": "GPU平均利用率",
-    "load_imbalance": "负载不均衡度",
-    "peak_valley_gap_kw": "峰谷差/kW",
-    "remote_task_count": "远端迁移任务数",
-    "remote_completion_rate": "远端任务完成率",
-    "remote_cost": "远端执行成本",
-    "remote_energy_kwh": "远端网络能耗/kWh",
-    "migration_delay_hours": "迁移平均时延/h",
-    "unit_token_energy_kwh_per_million": "单位百万Token能耗/kWh",
-    "unit_token_cost_per_million": "单位百万Token成本",
-    "total_tokens": "Token总量",
-    "delay_sensitive_violation_rate": "时延敏感任务违约率",
-    "power_limit_violation_hours": "功率上限违约时段数",
-    "peak_limit_violation_hours": "峰时功率违约时段数",
-    "total_completed_tasks": "完成任务数",
-    "total_tasks": "任务总数",
-    "objective_penalty": "约束惩罚项",
     "hour": "小时",
     "price": "电价",
-    "cpu_it_power_kw": "CPU IT功率/kW",
-    "gpu_it_power_kw": "GPU IT功率/kW",
-    "cooling_power_kw": "制冷功率/kW",
-    "fixed_power_kw": "固定功率/kW",
-    "total_power_kw": "本地总功率/kW",
-    "effective_power_kw": "等效总功率/kW",
-    "scale_or_tasks_path": "数据路径/规模",
-    "task_count": "任务数量",
-    "csv_size_mb": "CSV大小/MB",
-    "mode": "模式",
-    "step_name": "步骤名称",
-    "elapsed_seconds": "耗时/s",
-    "repeat_index": "重复编号",
-    "n_jobs": "并行进程数",
-    "cpu_count": "CPU核心数",
-    "speedup_vs_single_process": "相对单进程加速比",
-    "window_start": "窗口起始小时",
-    "window_end": "窗口结束小时",
+    "power_cap_pu": "功率上限标幺值",
+    "hourly_power_cap": "小时功率上限",
+    "high_price_flag": "高电价标记",
+    "low_price_flag": "低电价标记",
+    "hourly_task_arrivals": "小时任务到达量",
+    "hourly_cpu_demand": "小时CPU需求",
+    "hourly_completed_tasks": "小时完成任务数",
+    "hourly_deadline_violation_rate": "小时Deadline违约率",
+    "hourly_actual_power_w": "小时实际功率/W",
+    "hourly_reported_power_w": "小时报量功率/W",
+    "hourly_power_cap_w": "小时芯片功率上限/W",
+    "hourly_frequency_ghz": "小时频率/GHz",
+    "dvfs_tracking_error": "DVFS跟踪误差",
+    "cluster_cap_norm": "集群功率上限归一化",
+    "server_load_norm": "服务器负载归一化",
+    "chip_power_norm": "芯片功率归一化",
+    "power_margin_norm": "等效功率裕度",
+    "token_capacity": "Token产出能力",
+    "export_tokens": "出口Token量",
+    "total_export_tokens": "总出口Token量",
+    "token_export_revenue": "Token出口收益",
+    "token_energy_cost": "Token电力成本",
+    "net_token_profit": "Token净收益",
+    "avg_cross_timezone_delay": "平均跨时区时延/h",
+    "token_sla_violation_rate": "Token SLA违约率",
+    "energy_per_million_tokens": "百万Token能耗/kWh",
+    "cost_per_million_tokens": "百万Token成本",
+    "asia_export_tokens": "Asia出口Token量",
+    "europe_export_tokens": "Europe出口Token量",
+    "america_export_tokens": "America出口Token量",
+    "region": "地区",
+    "share": "占比",
     "parameter": "参数",
     "value": "参数值",
-    "scope": "范围",
-    "optimized_task_count": "优化任务数",
-    "solution_id": "解编号",
-    "cpu_servers": "CPU开机数序列",
-    "gpu_servers": "GPU开机数序列",
-    "defer_ratio": "时间迁移比例序列",
-    "migration_ratio": "空间迁移比例序列",
-    "fitness": "适应度",
-    "configured_migration_delay_hours": "配置跨区时延/h",
+    "metric": "指标",
 }
 
 
 def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[str, str]) -> None:
     """
-    复制 DataFrame，将英文列名按 column_mapping 映射为中文，然后导出 CSV。
-    不修改原始 df。
-    编码使用 utf-8-sig，方便 Excel 正常打开中文。
+    Copy a DataFrame, rename known English columns to Chinese, and export it.
+
+    The original df is not modified. utf-8-sig keeps Chinese headers readable in
+    Excel on Windows.
     """
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,55 +65,25 @@ def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[
 
 
 def safe_divide(numerator: float, denominator: float) -> float:
-    if denominator == 0:
+    if denominator == 0 or pd.isna(denominator):
         return 0.0
     return float(numerator) / float(denominator)
 
 
-def compute_load_imbalance(cpu_utilization: list[float], gpu_utilization: list[float]) -> float:
-    if not cpu_utilization or not gpu_utilization:
-        return 0.0
-    paired = zip(cpu_utilization, gpu_utilization)
-    return float(np.mean([abs(cpu - gpu) for cpu, gpu in paired]))
+def normalize_by_max(values: pd.Series | np.ndarray) -> pd.Series:
+    """Normalize a non-negative series by its maximum; constants remain meaningful."""
+    series = pd.Series(values, dtype="float64").fillna(0.0)
+    max_value = float(series.max())
+    if max_value <= 1e-12:
+        return pd.Series(np.zeros(len(series)), index=series.index)
+    return (series / max_value).clip(lower=0.0, upper=1.0)
 
 
-def compute_peak_valley_gap(hourly_power_kw: list[float]) -> float:
-    if not hourly_power_kw:
-        return 0.0
-    return float(max(hourly_power_kw) - min(hourly_power_kw))
-
-
-def select_compromise_solution(df: pd.DataFrame, objective_cols: list[str]) -> pd.Series:
-    norm = df[objective_cols].copy()
-    for col in objective_cols:
-        col_min = norm[col].min()
-        col_max = norm[col].max()
-        span = max(col_max - col_min, 1e-9)
-        norm[col] = (norm[col] - col_min) / span
-    score = norm.sum(axis=1)
-    return df.loc[score.idxmin()]
-
-
-def summarize_result_rows(result_rows: list[dict]) -> pd.DataFrame:
-    df = pd.DataFrame(result_rows)
-    order = [
-        "algorithm",
-        "total_energy_kwh",
-        "total_cost",
-        "avg_delay_hours",
-        "sla_violation_rate",
-        "completion_rate",
-        "avg_cpu_utilization",
-        "avg_gpu_utilization",
-        "load_imbalance",
-        "peak_valley_gap_kw",
-        "remote_task_count",
-        "remote_completion_rate",
-        "remote_cost",
-        "remote_energy_kwh",
-        "migration_delay_hours",
-        "unit_token_energy_kwh_per_million",
-        "unit_token_cost_per_million",
-    ]
-    remaining = [col for col in df.columns if col not in order]
-    return df[order + remaining]
+def minmax_norm(values: pd.Series | np.ndarray) -> pd.Series:
+    series = pd.Series(values, dtype="float64").fillna(0.0)
+    min_value = float(series.min())
+    max_value = float(series.max())
+    span = max_value - min_value
+    if span <= 1e-12:
+        return normalize_by_max(series)
+    return ((series - min_value) / span).clip(lower=0.0, upper=1.0)
