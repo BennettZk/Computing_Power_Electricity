@@ -1,0 +1,99 @@
+上传 XLSX 数据清洗报告
+
+Sheet 名列表:
+- 集群级数据: ['Sheet1']
+- 服务器级数据: ['DC0_R0_K0', 'DC0_R0_K1', 'DC0_R0_K2', 'DC0_R0_K3', 'DC0_R0_K4', 'DC0_R0_K5', 'DC0_R0_K6', 'DC0_R0_K7', 'DC0_R0_K8', 'DC0_R0_K9', 'DC0_R1_K0', 'DC0_R1_K1', 'DC0_R1_K2', 'DC0_R1_K3', 'DC0_R1_K4', 'DC0_R1_K5', 'DC0_R1_K6', 'DC0_R1_K7', 'DC0_R1_K8', 'DC0_R1_K9', 'DC0_R2_K0', 'DC0_R2_K1', 'DC0_R2_K2', 'DC0_R2_K3', 'DC0_R2_K4', 'DC0_R2_K5', 'DC0_R2_K6', 'DC0_R2_K7', 'DC0_R2_K8', 'DC0_R2_K9', 'DC0_R3_K0', 'DC0_R3_K1', 'DC0_R3_K2', 'DC0_R3_K3', 'DC0_R3_K4', 'DC0_R3_K5', 'DC0_R3_K6', 'DC0_R3_K7', 'DC0_R3_K8', 'DC0_R3_K9', 'DC0_R4_K0', 'DC0_R4_K1', 'DC0_R4_K2', 'DC0_R4_K3', 'DC0_R4_K4', 'DC0_R4_K5', 'DC0_R4_K6', 'DC0_R4_K7', 'DC0_R4_K8', 'DC0_R4_K9', 'DC0_R5_K0', 'DC0_R5_K1', 'DC0_R5_K2', 'DC0_R5_K3', 'DC0_R5_K4', 'DC0_R5_K5', 'DC0_R5_K6', 'DC0_R5_K7', 'DC0_R5_K8', 'DC0_R5_K9', 'DC0_R6_K0', 'DC0_R6_K1', 'DC0_R6_K2', 'DC0_R6_K3', 'DC0_R6_K4', 'DC0_R6_K5', 'DC0_R6_K6', 'DC0_R6_K7', 'DC0_R6_K8', 'DC0_R6_K9', 'DC0_R7_K0', 'DC0_R7_K1', 'DC0_R7_K2', 'DC0_R7_K3', 'DC0_R7_K4', 'DC0_R7_K5', 'DC0_R7_K6', 'DC0_R7_K7', 'DC0_R7_K8', 'DC0_R7_K9', 'DC0_R8_K0', 'DC0_R8_K1', 'DC0_R8_K2', 'DC0_R8_K3', 'DC0_R8_K4', 'DC0_R8_K5', 'DC0_R8_K6', 'DC0_R8_K7', 'DC0_R8_K8', 'DC0_R8_K9', 'DC0_R9_K0', 'DC0_R9_K1', 'DC0_R9_K2', 'DC0_R9_K3', 'DC0_R9_K4', 'DC0_R9_K5', 'DC0_R9_K6', 'DC0_R9_K7', 'DC0_R9_K8', 'DC0_R9_K9', 'DC1_R0_K0', 'DC1_R0_K1', 'DC1_R0_K2', 'DC1_R0_K3', 'DC1_R0_K4', 'DC1_R0_K5', 'DC1_R0_K6', 'DC1_R0_K7', 'DC1_R0_K8', 'DC1_R0_K9', 'DC1_R1_K0', 'DC1_R1_K1', 'DC1_R1_K2', 'DC1_R1_K3', 'DC1_R1_K4', 'DC1_R1_K5', 'DC1_R1_K6', 'DC1_R1_K7', 'DC1_R1_K8', 'DC1_R1_K9', 'DC1_R2_K0', 'DC1_R2_K1', 'DC1_R2_K2', 'DC1_R2_K3', 'DC1_R2_K4', 'DC1_R2_K5', 'DC1_R2_K6', 'DC1_R2_K7', 'DC1_R2_K8', 'DC1_R2_K9', 'DC1_R3_K0', 'DC1_R3_K1', 'DC1_R3_K2', 'DC1_R3_K3', 'DC1_R3_K4', 'DC1_R3_K5', 'DC1_R3_K6', 'DC1_R3_K7', 'DC1_R3_K8', 'DC1_R3_K9', 'DC1_R4_K0', 'DC1_R4_K1', 'DC1_R4_K2', 'DC1_R4_K3', 'DC1_R4_K4', 'DC1_R4_K5', 'DC1_R4_K6', 'DC1_R4_K7', 'DC1_R4_K8', 'DC1_R4_K9', 'DC1_R5_K0', 'DC1_R5_K1', 'DC1_R5_K2', 'DC1_R5_K3', 'DC1_R5_K4', 'DC1_R5_K5', 'DC1_R5_K6', 'DC1_R5_K7', 'DC1_R5_K8', 'DC1_R5_K9', 'DC1_R6_K0', 'DC1_R6_K1', 'DC1_R6_K2', 'DC1_R6_K3', 'DC1_R6_K4', 'DC1_R6_K5', 'DC1_R6_K6', 'DC1_R6_K7', 'DC1_R6_K8', 'DC1_R6_K9', 'DC1_R7_K0', 'DC1_R7_K1', 'DC1_R7_K2', 'DC1_R7_K3', 'DC1_R7_K4', 'DC1_R7_K5', 'DC1_R7_K6', 'DC1_R7_K7', 'DC1_R7_K8', 'DC1_R7_K9', 'DC1_R8_K0', 'DC1_R8_K1', 'DC1_R8_K2', 'DC1_R8_K3', 'DC1_R8_K4', 'DC1_R8_K5', 'DC1_R8_K6', 'DC1_R8_K7', 'DC1_R8_K8', 'DC1_R8_K9', 'DC1_R9_K0', 'DC1_R9_K1', 'DC1_R9_K2', 'DC1_R9_K3', 'DC1_R9_K4', 'DC1_R9_K5', 'DC1_R9_K6', 'DC1_R9_K7', 'DC1_R9_K8', 'DC1_R9_K9', 'DC2_R0_K0', 'DC2_R0_K1', 'DC2_R0_K2', 'DC2_R0_K3', 'DC2_R0_K4', 'DC2_R0_K5', 'DC2_R0_K6', 'DC2_R0_K7', 'DC2_R0_K8', 'DC2_R0_K9', 'DC2_R1_K0', 'DC2_R1_K1', 'DC2_R1_K2', 'DC2_R1_K3', 'DC2_R1_K4', 'DC2_R1_K5', 'DC2_R1_K6', 'DC2_R1_K7', 'DC2_R1_K8', 'DC2_R1_K9', 'DC2_R2_K0', 'DC2_R2_K1', 'DC2_R2_K2', 'DC2_R2_K3', 'DC2_R2_K4', 'DC2_R2_K5', 'DC2_R2_K6', 'DC2_R2_K7', 'DC2_R2_K8', 'DC2_R2_K9', 'DC2_R3_K0', 'DC2_R3_K1', 'DC2_R3_K2', 'DC2_R3_K3', 'DC2_R3_K4', 'DC2_R3_K5', 'DC2_R3_K6', 'DC2_R3_K7', 'DC2_R3_K8', 'DC2_R3_K9', 'DC2_R4_K0', 'DC2_R4_K1', 'DC2_R4_K2', 'DC2_R4_K3', 'DC2_R4_K4', 'DC2_R4_K5', 'DC2_R4_K6', 'DC2_R4_K7', 'DC2_R4_K8', 'DC2_R4_K9', 'DC2_R5_K0', 'DC2_R5_K1', 'DC2_R5_K2', 'DC2_R5_K3', 'DC2_R5_K4', 'DC2_R5_K5', 'DC2_R5_K6', 'DC2_R5_K7', 'DC2_R5_K8', 'DC2_R5_K9', 'DC2_R6_K0', 'DC2_R6_K1', 'DC2_R6_K2', 'DC2_R6_K3', 'DC2_R6_K4', 'DC2_R6_K5', 'DC2_R6_K6', 'DC2_R6_K7', 'DC2_R6_K8', 'DC2_R6_K9', 'DC2_R7_K0', 'DC2_R7_K1', 'DC2_R7_K2', 'DC2_R7_K3', 'DC2_R7_K4', 'DC2_R7_K5', 'DC2_R7_K6', 'DC2_R7_K7', 'DC2_R7_K8', 'DC2_R7_K9', 'DC2_R8_K0', 'DC2_R8_K1', 'DC2_R8_K2', 'DC2_R8_K3', 'DC2_R8_K4', 'DC2_R8_K5', 'DC2_R8_K6', 'DC2_R8_K7', 'DC2_R8_K8', 'DC2_R8_K9', 'DC2_R9_K0', 'DC2_R9_K1', 'DC2_R9_K2', 'DC2_R9_K3', 'DC2_R9_K4', 'DC2_R9_K5', 'DC2_R9_K6', 'DC2_R9_K7', 'DC2_R9_K8', 'DC2_R9_K9', 'DC3_R0_K0', 'DC3_R0_K1', 'DC3_R0_K2', 'DC3_R0_K3', 'DC3_R0_K4', 'DC3_R0_K5', 'DC3_R0_K6', 'DC3_R0_K7', 'DC3_R0_K8', 'DC3_R0_K9', 'DC3_R1_K0', 'DC3_R1_K1', 'DC3_R1_K2', 'DC3_R1_K3', 'DC3_R1_K4', 'DC3_R1_K5', 'DC3_R1_K6', 'DC3_R1_K7', 'DC3_R1_K8', 'DC3_R1_K9', 'DC3_R2_K0', 'DC3_R2_K1', 'DC3_R2_K2', 'DC3_R2_K3', 'DC3_R2_K4', 'DC3_R2_K5', 'DC3_R2_K6', 'DC3_R2_K7', 'DC3_R2_K8', 'DC3_R2_K9', 'DC3_R3_K0', 'DC3_R3_K1', 'DC3_R3_K2', 'DC3_R3_K3', 'DC3_R3_K4', 'DC3_R3_K5', 'DC3_R3_K6', 'DC3_R3_K7', 'DC3_R3_K8', 'DC3_R3_K9', 'DC3_R4_K0', 'DC3_R4_K1', 'DC3_R4_K2', 'DC3_R4_K3', 'DC3_R4_K4', 'DC3_R4_K5', 'DC3_R4_K6', 'DC3_R4_K7', 'DC3_R4_K8', 'DC3_R4_K9', 'DC3_R5_K0', 'DC3_R5_K1', 'DC3_R5_K2', 'DC3_R5_K3', 'DC3_R5_K4', 'DC3_R5_K5', 'DC3_R5_K6', 'DC3_R5_K7', 'DC3_R5_K8', 'DC3_R5_K9', 'DC3_R6_K0', 'DC3_R6_K1', 'DC3_R6_K2', 'DC3_R6_K3', 'DC3_R6_K4', 'DC3_R6_K5', 'DC3_R6_K6', 'DC3_R6_K7', 'DC3_R6_K8', 'DC3_R6_K9', 'DC3_R7_K0', 'DC3_R7_K1', 'DC3_R7_K2', 'DC3_R7_K3', 'DC3_R7_K4', 'DC3_R7_K5', 'DC3_R7_K6', 'DC3_R7_K7', 'DC3_R7_K8', 'DC3_R7_K9', 'DC3_R8_K0', 'DC3_R8_K1', 'DC3_R8_K2', 'DC3_R8_K3', 'DC3_R8_K4', 'DC3_R8_K5', 'DC3_R8_K6', 'DC3_R8_K7', 'DC3_R8_K8', 'DC3_R8_K9', 'DC3_R9_K0', 'DC3_R9_K1', 'DC3_R9_K2', 'DC3_R9_K3', 'DC3_R9_K4', 'DC3_R9_K5', 'DC3_R9_K6', 'DC3_R9_K7', 'DC3_R9_K8', 'DC3_R9_K9', 'DC0_R0', 'DC0_R1', 'DC0_R2', 'DC0_R3', 'DC0_R4', 'DC0_R5', 'DC0_R6', 'DC0_R7', 'DC0_R8', 'DC0_R9', 'DC1_R0', 'DC1_R1', 'DC1_R2', 'DC1_R3', 'DC1_R4', 'DC1_R5', 'DC1_R6', 'DC1_R7', 'DC1_R8', 'DC1_R9', 'DC2_R0', 'DC2_R1', 'DC2_R2', 'DC2_R3', 'DC2_R4', 'DC2_R5', 'DC2_R6', 'DC2_R7', 'DC2_R8', 'DC2_R9', 'DC3_R0', 'DC3_R1', 'DC3_R2', 'DC3_R3', 'DC3_R4', 'DC3_R5', 'DC3_R6', 'DC3_R7', 'DC3_R8', 'DC3_R9', '0821_schedule_fcfs_random_with_', 'step_cpu_usage_vs_cap', 'datacenter', 'Sheet6']
+- 芯片级数据: ['output3_chip']
+
+关键 Sheet 概览:
+- 服务器任务 Sheet: 0821_schedule_fcfs_random_with_, 行数=51321, 列数=11
+  字段名: ['Job', 'Arrival time', 'Scheduled start time', 'Execution time', 'CPU', 'datacenter_id', 'server_room_id', 'rack_id', 'server_id', 'global_server_id', 'end_step']
+- 集群场景 Sheet: Sheet1, 行数=288, 列数=4
+  字段名: ['时间步(5分钟)', '功率上限（标幺值）', '电价（美元/兆瓦时）', '奖励值']
+- 芯片 DVFS Sheet: output3_chip, 行数=21504, 列数=4
+  字段名: ['实际功率(瓦)', '报量功率（瓦）', '功率上限（瓦）', '频率(10^9Hz)']
+
+服务器任务总数: 51321
+
+arrival_time 的 0-23 小时分布:
+arrival_time
+0      3173
+1     12658
+2     25633
+3      6422
+4      2119
+5       960
+6       290
+7        66
+8         0
+9         0
+10        0
+11        0
+12        0
+13        0
+14        0
+15        0
+16        0
+17        0
+18        0
+19        0
+20        0
+21        0
+22        0
+23        0
+
+task_type 分布:
+task_type
+delay_tolerant     46696
+delay_sensitive     4625
+
+cpu_demand 统计:
+- mean=9.670349
+- min=1.000000
+- max=30.000000
+
+deadline 异常检查:
+- 修正前 deadline < arrival_time 数量: 0
+- 清洗后 deadline < arrival_time 数量: 0
+
+hourly_input_24h.csv 概览:
+ hour  arrival_rate  price  power_limit
+    0          3173 42.620     1.000000
+    1         12658 40.530     1.000000
+    2         25633 34.475     1.000000
+    3          6422 40.450     0.913513
+    4          2119 27.825     0.931902
+    5           960 36.660     0.737548
+    6           290 39.635     0.750672
+    7            66 38.355     0.798914
+    8             0 41.750     0.661158
+    9             0 44.870     0.593102
+   10             0 55.860     0.501984
+   11             0 50.165     0.535840
+   12             0 44.210     0.570767
+   13             0 42.165     0.589896
+   14             0 42.660     0.622658
+   15             0 56.835     0.610323
+   16             0 69.580     0.585560
+   17             0 62.500     0.656676
+   18             0 53.460     0.729704
+   19             0 40.870     0.757436
+   20             0 38.330     0.733919
+   21             0 31.905     0.703038
+   22             0 20.970     0.702117
+   23             0 15.970     0.678690
+
+chip_dvfs.csv 概览:
+- 行数: 21504
+- actual_power_w 范围: 414.720000 - 1084.160000
+- frequency_ghz 范围: 0.800000 - 1.800000
+
+缺失值填补数量:
+- 无
+
+主输入替换:
+- 已备份任务输入到: E:\Coding\redo\dc_token_opt\data\synthetic\tasks_backup_before_real_case.csv
+- 已备份小时输入到: E:\Coding\redo\dc_token_opt\data\hourly_input_backup_before_real_case.csv
+- 已替换任务输入: E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv
+- 已替换小时输入: E:\Coding\redo\dc_token_opt\data\hourly_input.csv
+- 已删除小时缓存: E:\Coding\redo\dc_token_opt\data\processed\hourly_profile.csv

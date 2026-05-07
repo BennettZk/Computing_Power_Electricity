@@ -1,12 +1,12 @@
 单数据中心异构资源调度实验摘要
 
-任务总数: 4474
+任务总数: 51321
 电价场景: default_tou
-Proposed 推荐方案总电费: 144.0029
-Proposed 推荐方案平均时延: 0.590571
-Proposed 推荐方案 SLA 违约率: 0.111086
-Proposed 空间迁移任务数: 69
-Proposed 远端执行成本: 1.9665
+Proposed 推荐方案总电费: 6242.2261
+Proposed 推荐方案平均时延: 3.025291
+Proposed 推荐方案 SLA 违约率: 0.988211
+Proposed 空间迁移任务数: 0
+Proposed 远端执行成本: 0.0000
 
 主实验图表:
 outputs/price_load_curve.png

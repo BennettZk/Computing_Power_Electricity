@@ -182,6 +182,43 @@ outputs/real_data_cleaning_report.txt
 
 如需使用真实小时输入，可将 `data/real/hourly_input.csv` 复制到 `data/hourly_input.csv`，或在 `config/price.yaml` 中将 `legacy_profile_path` 指向 `data/real/hourly_input.csv`。如果已经生成过 `data/processed/hourly_profile.csv`，需要删除该文件后重新运行，确保新的小时曲线生效。
 
+### 上传 XLSX 案例数据清洗
+
+如果原始数据是以下三个 Excel 文件：
+
+```text
+data/raw/数据中心集群级别的调度数据.xlsx
+data/raw/服务器级别的调度数据.xlsx
+data/raw/芯片级别的调度数据.xlsx
+```
+
+可以运行专用清洗脚本：
+
+```powershell
+python scripts/prepare_uploaded_case_dataset.py
+```
+
+默认只生成 `data/real_case/` 下的标准 CSV，不会替换主实验默认输入：
+
+```text
+data/real_case/server_tasks_24h.csv
+data/real_case/server_tasks_5min_raw_mapped.csv
+data/real_case/cluster_power_price_5min.csv
+data/real_case/hourly_input_24h.csv
+data/real_case/chip_dvfs.csv
+outputs/uploaded_case_cleaning_report.txt
+```
+
+其中 `server_tasks_24h.csv` 兼容 `models.task.load_tasks_csv`，`hourly_input_24h.csv` 兼容项目小时输入格式；芯片级 `chip_dvfs.csv` 只用于拓展分析，不进入 `main.py` 主输入。
+
+如果确认清洗结果无误，可以选择替换主实验输入：
+
+```powershell
+python scripts/prepare_uploaded_case_dataset.py --replace-main-inputs
+```
+
+该模式会先备份 `data/synthetic/tasks.csv` 和 `data/hourly_input.csv`，再复制清洗后的真实案例输入，并删除 `data/processed/hourly_profile.csv` 缓存，避免继续读取旧小时曲线。默认模式不会执行这些替换。
+
 ## 算法说明
 
 `FCFS`：先来先服务基线。它根据任务到达顺序执行任务，不考虑分时电价，也不启用空间迁移。

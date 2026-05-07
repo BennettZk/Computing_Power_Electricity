@@ -15,6 +15,16 @@ from models.power_model import total_energy_cost
 from models.resource import ResourcePool
 
 
+def _fallback_total_server_plan(hourly_df: pd.DataFrame, resource_pool: ResourcePool, base_cfg: dict) -> np.ndarray:
+    """当同构 NSGA-II 没有返回可用种群时，给出保守的启发式总服务器计划。"""
+    hours = int(base_cfg["time"]["hours"])
+    total_servers = resource_pool.cpu.count + resource_pool.gpu.count
+    effective_service = (resource_pool.cpu.queue_service_rate + resource_pool.gpu.queue_service_rate) / 2.0
+    arrival = hourly_df["arrival_rate"].to_numpy(dtype=float)
+    estimated = np.ceil(arrival / max(effective_service, 1e-9)).astype(int)
+    return np.clip(estimated, 1, total_servers)[:hours]
+
+
 class HomogeneousSchedulingProblem(ElementwiseProblem):
     """同构基线问题：沿用原论文“单一服务器类型 + 单一负载”的建模思路。"""
 
@@ -79,12 +89,23 @@ def build_homogeneous_schedule(hourly_df: pd.DataFrame, resource_pool: ResourceP
         verbose=False,
     )
 
-    X = np.atleast_2d(result.X)
-    F = np.atleast_2d(result.F)
-    norm = (F - F.min(axis=0)) / np.maximum(F.max(axis=0) - F.min(axis=0), 1e-9)
-    # 归一化后取成本和时延综合最小的折中解。
-    best_idx = int(np.argmin(norm.sum(axis=1)))
-    total_servers = np.rint(X[best_idx]).astype(int)
+    raw_x = result.X
+    raw_f = result.F
+    if raw_x is None or raw_f is None:
+        # 真实大负载下同构约束可能完全不可行，此时 pymoo 不返回 result.X/F。
+        # 回退到最终种群继续选择折中解，保证对照组不让主实验中断。
+        raw_x = result.pop.get("X") if result.pop is not None else None
+        raw_f = result.pop.get("F") if result.pop is not None else None
+
+    if raw_x is None or raw_f is None:
+        total_servers = _fallback_total_server_plan(hourly_df, resource_pool, base_cfg)
+    else:
+        X = np.atleast_2d(raw_x)
+        F = np.atleast_2d(raw_f)
+        norm = (F - F.min(axis=0)) / np.maximum(F.max(axis=0) - F.min(axis=0), 1e-9)
+        # 归一化后取成本和时延综合最小的折中解。
+        best_idx = int(np.argmin(norm.sum(axis=1)))
+        total_servers = np.rint(X[best_idx]).astype(int)
 
     cpu_share = resource_pool.cpu.count / max(resource_pool.cpu.count + resource_pool.gpu.count, 1)
     cpu_servers = np.clip(np.ceil(total_servers * cpu_share), 1, resource_pool.cpu.count).astype(int)
