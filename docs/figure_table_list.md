@@ -29,5 +29,7 @@
 - 机房任务分布：`outputs/nbsdc_fusion/room_task_distribution.csv`
 - Token 出口区域配置：`config/token_export.yaml`
 - Token 出口策略对比结果：`outputs/token_export/token_export_results.csv`
-- Token 出口策略对比中文展示版：`outputs/token_export/token_export_results_cn.csv`
+- Token 出口策略对比中文展示版：`outputs/token_export/token_export_results_cn.csv`，包含“不出口”零出口基准。
 - 参数敏感性结果：`outputs/token_export/token_sensitivity_results.csv`
+
+说明：主要图表已排除“不出口”基准，以突出实际发生 Token 出口的策略之间的差异；“不出口”仅保留在结果表中用于对照。

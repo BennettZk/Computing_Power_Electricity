@@ -41,6 +41,16 @@ PARAMETER_LABELS = {
 }
 
 
+def _plot_ready_summary(summary: pd.DataFrame) -> pd.DataFrame:
+    """Exclude the zero-export baseline from main comparison figures."""
+    return summary[summary["strategy"] != "No-Export"].copy()
+
+
+def _plot_ready_region(region_results: pd.DataFrame) -> pd.DataFrame:
+    """Exclude the zero-export baseline from main region-export figures."""
+    return region_results[region_results["strategy"] != "No-Export"].copy()
+
+
 def _token_capacity(fusion_df: pd.DataFrame, config: dict) -> pd.Series:
     return fusion_df["power_margin_norm"].clip(lower=0.0) * float(config["token_per_margin_unit"])
 
@@ -399,6 +409,8 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
 
 
 def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_results: pd.DataFrame, sensitivity: pd.DataFrame, output_dir: Path) -> None:
+    plot_summary = _plot_ready_summary(summary)
+    plot_region_results = _plot_ready_region(region_results)
     capacity_df = hourly_results[hourly_results["strategy"] == "RH-TEO"][["hour", "token_capacity"]].copy()
     save_line_plot(
         capacity_df,
@@ -409,9 +421,9 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
         xlabel="小时",
         ylabel="Token产出能力",
     )
-    _plot_region_export(region_results, output_dir)
-    _plot_bar(summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益")
-    _plot_bar(summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同策略跨时区服务时延对比", "平均时延/h")
+    _plot_region_export(plot_region_results, output_dir)
+    _plot_bar(plot_summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益")
+    _plot_bar(plot_summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同Token出口策略跨时区服务时延对比", "平均时延/h")
 
     # Rebuild the curve from RH-TEO rows so the x-axis is the fused margin.
     rh_rows = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("token_capacity")
@@ -510,6 +522,9 @@ def run_token_export(
         f"最优策略净收益: {best['net_token_profit']:.6f}",
         f"RH-TEO总出口Token量: {rh_row['total_export_tokens']:.2f}",
         f"RH-TEO SLA违约率: {rh_row['token_sla_violation_rate']:.6f}",
+        "",
+        "“不出口”作为零出口基准保留在结果表中，不参与主要图表展示；主要图表比较的是实际发生 Token 出口的策略。",
+        "“不出口”无跨时区服务时延，因此不参与跨时区服务时延图比较。",
         "",
         "生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。",
     ]

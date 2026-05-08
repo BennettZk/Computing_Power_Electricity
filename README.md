@@ -70,6 +70,8 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `token_sensitivity.png`
 - `power_to_token_curve.png`，该图为线性转换关系，仅作为辅助检查，不建议作为核心论文图。
 
+说明：`token_export_results.csv` 和 `token_export_results_cn.csv` 保留“不出口”零出口基准；主要柱状图和地区出口图已排除该基准，以突出实际发生 Token 出口的策略差异。
+
 ## 三层融合模型
 
 当前融合模型输出以下关键指标：

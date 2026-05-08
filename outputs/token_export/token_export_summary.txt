@@ -10,4 +10,7 @@ Token产能系数: 1000000
 RH-TEO总出口Token量: 8283641.68
 RH-TEO SLA违约率: 0.172884
 
+“不出口”作为零出口基准保留在结果表中，不参与主要图表展示；主要图表比较的是实际发生 Token 出口的策略。
+“不出口”无跨时区服务时延，因此不参与跨时区服务时延图比较。
+
 生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。
