@@ -43,8 +43,13 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 `outputs/nbsdc_fusion/` 保存三层融合结果：
 
 - `aligned_hourly_fusion.csv`
+- `aligned_hourly_fusion_cn.csv`
 - `nbsdc_fusion_metrics.csv`
+- `nbsdc_fusion_metrics_cn.csv`
 - `nbsdc_fusion_summary.txt`
+- `room_task_distribution_cn.csv`
+- `rack_task_distribution_cn.csv`
+- `server_task_distribution_cn.csv`
 - `price_powercap.png`
 - `hourly_task_arrivals.png`
 - `dvfs_frequency_power.png`
@@ -58,8 +63,11 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `token_export_results.csv`
 - `token_export_results_cn.csv`
 - `hourly_token_export.csv`
+- `hourly_token_export_cn.csv`
 - `region_token_export.csv`
+- `region_token_export_cn.csv`
 - `token_sensitivity_results.csv`
+- `token_sensitivity_results_cn.csv`
 - `token_export_summary.txt`
 - `hourly_token_capacity.png`
 - `power_margin_token_capacity_timeseries.png`
@@ -71,6 +79,8 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `power_to_token_curve.png`，该图为线性转换关系，仅作为辅助检查，不建议作为核心论文图。
 
 说明：`token_export_results.csv` 和 `token_export_results_cn.csv` 保留“不出口”零出口基准；主要柱状图和地区出口图已排除该基准，以突出实际发生 Token 出口的策略差异。
+
+项目同时输出英文标准版 CSV 与中文展示版 CSV。英文版用于程序复现和后续读取，中文 `*_cn.csv` 用于论文表格整理；中文展示版会翻译表头以及策略名、地区名、参数名等字段值。
 
 ## 三层融合模型
 

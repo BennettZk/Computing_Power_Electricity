@@ -8,7 +8,18 @@ import numpy as np
 import pandas as pd
 
 from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
-from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, safe_divide
+from utils.metrics import (
+    PARAMETER_VALUE_MAPPING as PARAMETER_LABELS,
+    REGION_VALUE_MAPPING as REGION_LABELS,
+    RESULT_CSV_COLUMN_MAPPING,
+    STRATEGY_VALUE_MAPPING as STRATEGY_LABELS,
+    add_strategy_remark,
+    export_csv_chinese,
+    localize_parameter_values,
+    localize_region_values,
+    localize_strategy_values,
+    safe_divide,
+)
 from utils.plotting import save_line_plot, save_multi_line_plot, setup_chinese_matplotlib
 
 
@@ -17,29 +28,6 @@ REGION_COLUMNS = {
     "Europe": "europe_export_tokens",
     "America": "america_export_tokens",
 }
-
-STRATEGY_LABELS = {
-    "No-Export": "不出口",
-    "Power-Margin-Only": "仅功率裕度",
-    "Price-Driven": "电价驱动",
-    "Latency-Aware": "时延感知",
-    "RH-TEO": "RH-TEO策略",
-}
-
-REGION_LABELS = {
-    "Asia": "亚洲",
-    "Europe": "欧洲",
-    "America": "美洲",
-}
-
-PARAMETER_LABELS = {
-    "base_token_sla_hours": "SLA阈值",
-    "latency_scale": "跨时区时延放大系数",
-    "america_price_multiplier": "美洲价格倍率",
-    "window_size_hours": "滚动窗口长度",
-    "token_per_margin_unit_factor": "Token产能系数",
-}
-
 
 def _plot_ready_summary(summary: pd.DataFrame) -> pd.DataFrame:
     """Exclude the zero-export baseline from main comparison figures."""
@@ -496,14 +484,18 @@ def run_token_export(
     sensitivity = _run_sensitivity(hourly, config)
 
     results_path = save_csv(summary, output_dir / "token_export_results.csv")
-    summary_cn = summary.copy()
-    summary_cn["strategy"] = summary_cn["strategy"].map(STRATEGY_LABELS).fillna(summary_cn["strategy"])
+    summary_cn = localize_strategy_values(add_strategy_remark(summary))
     export_csv_chinese(summary_cn, output_dir / "token_export_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     hourly_path = save_csv(hourly_results, output_dir / "hourly_token_export.csv")
+    hourly_cn = localize_strategy_values(hourly_results)
+    export_csv_chinese(hourly_cn, output_dir / "hourly_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     region_path = save_csv(region_results, output_dir / "region_token_export.csv")
+    region_cn = add_strategy_remark(region_results)
+    region_cn = localize_strategy_values(region_cn)
+    region_cn = localize_region_values(region_cn)
+    export_csv_chinese(region_cn, output_dir / "region_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     sensitivity_path = save_csv(sensitivity, output_dir / "token_sensitivity_results.csv")
-    sensitivity_cn = sensitivity.copy()
-    sensitivity_cn["parameter"] = sensitivity_cn["parameter"].map(PARAMETER_LABELS).fillna(sensitivity_cn["parameter"])
+    sensitivity_cn = localize_parameter_values(sensitivity)
     export_csv_chinese(sensitivity_cn, output_dir / "token_sensitivity_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     _plot_outputs(summary, hourly_results, region_results, sensitivity, output_dir)
 
@@ -535,6 +527,8 @@ def run_token_export(
         "hourly_token_export": hourly_path,
         "region_token_export": region_path,
         "token_sensitivity_results": sensitivity_path,
+        "hourly_token_export_cn": output_dir / "hourly_token_export_cn.csv",
+        "region_token_export_cn": output_dir / "region_token_export_cn.csv",
         "token_sensitivity_results_cn": output_dir / "token_sensitivity_results_cn.csv",
         "summary": summary_path,
     }

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
-from utils.metrics import normalize_by_max, normalize_minmax
+from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, normalize_by_max, normalize_minmax
 from utils.plotting import save_bar_plot, save_line_plot, save_multi_line_plot, save_scatter_plot, setup_chinese_matplotlib
 
 
@@ -118,6 +118,9 @@ def _save_distribution_tables(server_df: pd.DataFrame, output_dir: Path) -> dict
     save_csv(room, output_dir / "room_task_distribution.csv")
     save_csv(rack, output_dir / "rack_task_distribution.csv")
     save_csv(server_dist, output_dir / "server_task_distribution.csv")
+    export_csv_chinese(room, output_dir / "room_task_distribution_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    export_csv_chinese(rack, output_dir / "rack_task_distribution_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    export_csv_chinese(server_dist, output_dir / "server_task_distribution_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     return {"room": room, "rack": rack, "server": server_dist}
 
 
@@ -207,6 +210,7 @@ def run_nbsdc_fusion(
     aligned["base_reserve"] = float(base_reserve)
 
     aligned_path = save_csv(aligned, output_dir / "aligned_hourly_fusion.csv")
+    export_csv_chinese(aligned, output_dir / "aligned_hourly_fusion_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     metrics_cols = [
         "hour",
         "price",
@@ -231,7 +235,9 @@ def run_nbsdc_fusion(
         "power_margin_norm_v2",
         "power_margin_norm",
     ]
-    metrics_path = save_csv(aligned[metrics_cols], output_dir / "nbsdc_fusion_metrics.csv")
+    metrics_df = aligned[metrics_cols]
+    metrics_path = save_csv(metrics_df, output_dir / "nbsdc_fusion_metrics.csv")
+    export_csv_chinese(metrics_df, output_dir / "nbsdc_fusion_metrics_cn.csv", RESULT_CSV_COLUMN_MAPPING)
 
     _plot_price_powercap(aligned, output_dir)
     save_line_plot(
