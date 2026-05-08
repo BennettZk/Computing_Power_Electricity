@@ -388,7 +388,7 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     ax2b = axes[2].twinx()
     axes[2].plot(north_america["value"], north_america["north_america_export_share"], marker="o", color="#f97316", label="美洲出口占比")
     ax2b.plot(north_america["value"], north_america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
-    axes[2].set_title("北美价格倍率敏感性")
+    axes[2].set_title("远端出口市场价格敏感性")
     axes[2].set_xlabel("北美价格倍率")
     axes[2].set_ylabel("北美出口占比")
     ax2b.set_ylabel("净收益")
