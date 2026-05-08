@@ -115,7 +115,9 @@ RH-TEO 表示 Rolling-Horizon Token Export Optimization，主流程为：
 token_capacity_t = power_margin_norm_t * token_per_margin_unit
 ```
 
-4. 对 Asia、Europe、America 三个跨时区出口区域进行滚动窗口分配，综合收益、电力成本、时延惩罚、SLA 惩罚和出口波动惩罚选择当前小时决策。
+4. 对国内、欧洲、北美三个 Token 服务场景进行滚动窗口分配，综合收益、电力成本、时延惩罚、SLA 惩罚和出口波动惩罚选择当前小时决策。
+
+本项目以中国数据中心为算力供给侧，构造国内本地需求、欧洲出口需求和北美出口需求三类 Token 服务场景。欧洲和北美区域参数为扩展场景假设，用于刻画跨境算力服务的价格与时延差异，并非 NBSDC 原始字段。
 
 项目实现了五类策略对比：
 

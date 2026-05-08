@@ -15,15 +15,15 @@ STRATEGY_VALUE_MAPPING = {
 }
 
 REGION_VALUE_MAPPING = {
-    "Asia": "亚洲",
+    "Domestic": "国内",
     "Europe": "欧洲",
-    "America": "美洲",
+    "NorthAmerica": "北美",
 }
 
 PARAMETER_VALUE_MAPPING = {
     "base_token_sla_hours": "SLA阈值",
     "latency_scale": "跨时区时延放大系数",
-    "america_price_multiplier": "美洲价格倍率",
+    "north_america_price_multiplier": "北美价格倍率",
     "window_size_hours": "滚动窗口长度",
     "token_per_margin_unit_factor": "Token产能系数",
 }
@@ -69,10 +69,10 @@ RESULT_CSV_COLUMN_MAPPING = {
     "token_sla_violation_rate": "Token SLA违约率",
     "energy_per_million_tokens": "百万Token能耗/kWh",
     "cost_per_million_tokens": "百万Token成本",
-    "asia_export_tokens": "亚洲出口Token量",
+    "domestic_export_tokens": "国内出口Token量",
     "europe_export_tokens": "欧洲出口Token量",
-    "america_export_tokens": "美洲出口Token量",
-    "america_export_share": "美洲出口占比",
+    "north_america_export_tokens": "北美出口Token量",
+    "north_america_export_share": "北美出口占比",
     "region": "地区",
     "share": "占比",
     "parameter": "参数",

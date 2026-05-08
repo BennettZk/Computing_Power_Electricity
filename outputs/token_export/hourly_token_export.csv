@@ -1,4 +1,4 @@
-﻿hour,token_capacity,export_tokens,token_export_revenue,token_energy_cost,net_token_profit,avg_cross_timezone_delay,token_sla_violation_rate,energy_per_million_tokens,cost_per_million_tokens,utility,export_ramp_tokens,asia_export_tokens,europe_export_tokens,america_export_tokens,strategy,price,power_margin_norm
+﻿hour,token_capacity,export_tokens,token_export_revenue,token_energy_cost,net_token_profit,avg_cross_timezone_delay,token_sla_violation_rate,energy_per_million_tokens,cost_per_million_tokens,utility,export_ramp_tokens,domestic_export_tokens,europe_export_tokens,north_america_export_tokens,strategy,price,power_margin_norm
 0,683481.9154775183,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,No-Export,42.62,0.6834819154775184
 1,639369.9166416501,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,No-Export,40.53,0.6393699166416501
 2,566156.721699095,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,No-Export,34.475,0.566156721699095

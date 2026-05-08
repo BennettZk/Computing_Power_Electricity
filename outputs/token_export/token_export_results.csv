@@ -1,4 +1,4 @@
-﻿strategy,total_export_tokens,token_export_revenue,token_energy_cost,net_token_profit,avg_cross_timezone_delay,token_sla_violation_rate,energy_per_million_tokens,cost_per_million_tokens,asia_export_tokens,europe_export_tokens,america_export_tokens
+﻿strategy,total_export_tokens,token_export_revenue,token_energy_cost,net_token_profit,avg_cross_timezone_delay,token_sla_violation_rate,energy_per_million_tokens,cost_per_million_tokens,domestic_export_tokens,europe_export_tokens,north_america_export_tokens
 No-Export,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
 Power-Margin-Only,5975412.681367345,5.839502577338467,0.16880705387044226,5.670695523468025,0.25,0.3333333333333333,0.6743166685018298,0.028250275398855697,1991804.2271224484,1991804.2271224484,1991804.2271224484
 Price-Driven,4695158.176930429,5.070770831084863,0.1051642811104932,4.965606549974369,0.3675,1.0,0.6411886811542873,0.022398453289010772,0.0,0.0,4695158.176930429

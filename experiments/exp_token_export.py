@@ -24,9 +24,9 @@ from utils.plotting import save_line_plot, save_multi_line_plot, setup_chinese_m
 
 
 REGION_COLUMNS = {
-    "Asia": "asia_export_tokens",
+    "Domestic": "domestic_export_tokens",
     "Europe": "europe_export_tokens",
-    "America": "america_export_tokens",
+    "NorthAmerica": "north_america_export_tokens",
 }
 
 def _plot_ready_summary(summary: pd.DataFrame) -> pd.DataFrame:
@@ -133,11 +133,11 @@ def _zero_alloc() -> dict[str, float]:
 def _shares_grid(step: float = 0.25) -> list[dict[str, float]]:
     values = np.arange(0.0, 1.0 + step / 2, step)
     shares: list[dict[str, float]] = []
-    for asia, europe in product(values, values):
-        america = 1.0 - float(asia) - float(europe)
-        if america < -1e-9:
+    for domestic, europe in product(values, values):
+        north_america = 1.0 - float(domestic) - float(europe)
+        if north_america < -1e-9:
             continue
-        shares.append({"Asia": float(asia), "Europe": float(europe), "America": max(0.0, float(america))})
+        shares.append({"Domestic": float(domestic), "Europe": float(europe), "NorthAmerica": max(0.0, float(north_america))})
     return shares
 
 
@@ -166,7 +166,7 @@ def _run_fixed_strategy(strategy: str, hourly: pd.DataFrame, config: dict) -> pd
             if should_export:
                 allocation[highest_price_region] = capacity * 0.75
         elif strategy == "Latency-Aware":
-            allocation = {"Asia": capacity * 0.55 * 0.80, "Europe": capacity * 0.55 * 0.15, "America": capacity * 0.55 * 0.05}
+            allocation = {"Domestic": capacity * 0.55 * 0.80, "Europe": capacity * 0.55 * 0.15, "NorthAmerica": capacity * 0.55 * 0.05}
         else:
             raise ValueError(f"Unknown fixed strategy: {strategy}")
         evaluated = _evaluate_hour(hour, row, allocation, config, previous_export)
@@ -229,9 +229,9 @@ def _summarize_strategy(hourly_result: pd.DataFrame) -> dict:
         "token_sla_violation_rate": sla,
         "energy_per_million_tokens": energy,
         "cost_per_million_tokens": safe_divide(energy_cost, total_million),
-        "asia_export_tokens": float(hourly_result["asia_export_tokens"].sum()),
+        "domestic_export_tokens": float(hourly_result["domestic_export_tokens"].sum()),
         "europe_export_tokens": float(hourly_result["europe_export_tokens"].sum()),
-        "america_export_tokens": float(hourly_result["america_export_tokens"].sum()),
+        "north_america_export_tokens": float(hourly_result["north_america_export_tokens"].sum()),
     }
 
 
@@ -270,10 +270,10 @@ def _run_sensitivity(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
                 "net_token_profit": summary["net_token_profit"],
                 "avg_cross_timezone_delay": summary["avg_cross_timezone_delay"],
                 "token_sla_violation_rate": summary["token_sla_violation_rate"],
-                "asia_export_tokens": summary["asia_export_tokens"],
+                "domestic_export_tokens": summary["domestic_export_tokens"],
                 "europe_export_tokens": summary["europe_export_tokens"],
-                "america_export_tokens": summary["america_export_tokens"],
-                "america_export_share": safe_divide(summary["america_export_tokens"], summary["total_export_tokens"]),
+                "north_america_export_tokens": summary["north_america_export_tokens"],
+                "north_america_export_share": safe_divide(summary["north_america_export_tokens"], summary["total_export_tokens"]),
             }
         )
 
@@ -288,11 +288,11 @@ def _run_sensitivity(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
             region_cfg["latency_hours"] = float(region_cfg["latency_hours"]) * scale
         collect("latency_scale", scale, cfg)
 
-    base_america_price = float(config["regions"]["America"]["price_per_million_tokens"])
+    base_north_america_price = float(config["regions"]["NorthAmerica"]["price_per_million_tokens"])
     for multiplier in [1.0, 1.2, 1.5, 1.8]:
         cfg = deepcopy(config)
-        cfg["regions"]["America"]["price_per_million_tokens"] = base_america_price * multiplier
-        collect("america_price_multiplier", multiplier, cfg)
+        cfg["regions"]["NorthAmerica"]["price_per_million_tokens"] = base_north_america_price * multiplier
+        collect("north_america_price_multiplier", multiplier, cfg)
 
     for window in [2, 4, 6]:
         cfg = deepcopy(config)
@@ -317,8 +317,8 @@ def _plot_region_export(region_results: pd.DataFrame, output_dir: Path) -> None:
     pivot = plot_df.pivot(index="strategy_label", columns="region", values="export_tokens").fillna(0.0) / 1_000_000.0
     fig, ax = plt.subplots(figsize=(9, 5))
     bottom = np.zeros(len(pivot))
-    colors = {"Asia": "#2563eb", "Europe": "#16a34a", "America": "#dc2626"}
-    for region in ["Asia", "Europe", "America"]:
+    colors = {"Domestic": "#2563eb", "Europe": "#16a34a", "NorthAmerica": "#dc2626"}
+    for region in ["Domestic", "Europe", "NorthAmerica"]:
         values = pivot[region].values if region in pivot.columns else np.zeros(len(pivot))
         ax.bar(pivot.index, values, bottom=bottom, label=REGION_LABELS[region], color=colors[region])
         bottom += values
@@ -361,7 +361,7 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
     sla = sensitivity[sensitivity["parameter"] == "base_token_sla_hours"]
     latency = sensitivity[sensitivity["parameter"] == "latency_scale"]
-    america = sensitivity[sensitivity["parameter"] == "america_price_multiplier"]
+    north_america = sensitivity[sensitivity["parameter"] == "north_america_price_multiplier"]
 
     ax0b = axes[0].twinx()
     axes[0].plot(sla["value"], sla["token_sla_violation_rate"], marker="o", color="#dc2626", label="SLA违约率")
@@ -371,6 +371,8 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     axes[0].set_ylabel("SLA违约率")
     ax0b.set_ylabel("净收益")
     axes[0].grid(True, linestyle="--", alpha=0.3)
+    lines = axes[0].get_lines() + ax0b.get_lines()
+    axes[0].legend(lines, [line.get_label() for line in lines], loc="best")
 
     ax1b = axes[1].twinx()
     axes[1].plot(latency["value"], latency["avg_cross_timezone_delay"], marker="o", color="#16a34a", label="平均时延")
@@ -380,15 +382,19 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     axes[1].set_ylabel("平均时延/h")
     ax1b.set_ylabel("净收益")
     axes[1].grid(True, linestyle="--", alpha=0.3)
+    lines = axes[1].get_lines() + ax1b.get_lines()
+    axes[1].legend(lines, [line.get_label() for line in lines], loc="best")
 
     ax2b = axes[2].twinx()
-    axes[2].plot(america["value"], america["america_export_share"], marker="o", color="#f97316", label="美洲占比")
-    ax2b.plot(america["value"], america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
-    axes[2].set_title("美洲价格倍率敏感性")
-    axes[2].set_xlabel("美洲价格倍率")
-    axes[2].set_ylabel("美洲出口占比")
+    axes[2].plot(north_america["value"], north_america["north_america_export_share"], marker="o", color="#f97316", label="美洲出口占比")
+    ax2b.plot(north_america["value"], north_america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[2].set_title("北美价格倍率敏感性")
+    axes[2].set_xlabel("北美价格倍率")
+    axes[2].set_ylabel("北美出口占比")
     ax2b.set_ylabel("净收益")
     axes[2].grid(True, linestyle="--", alpha=0.3)
+    lines = axes[2].get_lines() + ax2b.get_lines()
+    axes[2].legend(lines, [line.get_label() for line in lines], loc="best")
 
     fig.suptitle("Token出口关键参数敏感性分析")
     fig.tight_layout()
@@ -450,19 +456,19 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
     plt.close(fig)
 
     rh_alloc = hourly_results[hourly_results["strategy"] == "RH-TEO"][
-        ["hour", "asia_export_tokens", "europe_export_tokens", "america_export_tokens"]
+        ["hour", "domestic_export_tokens", "europe_export_tokens", "north_america_export_tokens"]
     ].copy()
-    for col in ["asia_export_tokens", "europe_export_tokens", "america_export_tokens"]:
+    for col in ["domestic_export_tokens", "europe_export_tokens", "north_america_export_tokens"]:
         rh_alloc[col] = rh_alloc[col] / 1_000_000.0
     save_multi_line_plot(
         rh_alloc,
         x="hour",
-        y_columns=["asia_export_tokens", "europe_export_tokens", "america_export_tokens"],
+        y_columns=["domestic_export_tokens", "europe_export_tokens", "north_america_export_tokens"],
         path=output_dir / "rh_teo_allocation_curve.png",
         title="RH-TEO策略下跨时区Token分配曲线",
         xlabel="小时",
         ylabel="出口Token量/百万",
-        labels={"asia_export_tokens": "亚洲", "europe_export_tokens": "欧洲", "america_export_tokens": "美洲"},
+        labels={"domestic_export_tokens": "国内", "europe_export_tokens": "欧洲", "north_america_export_tokens": "北美"},
     )
     _plot_sensitivity(sensitivity, output_dir)
 
