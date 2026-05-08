@@ -29,6 +29,14 @@ Missing/fill counts:
 - server_id: 0
 - server_room_id: 0
 - task_id: 0
+Arrival time mapping:
+- arrival_step min: 0.0000
+- arrival_step max: 95.0000
+- requested mode: auto
+- resolved mode: rescale_24h
+- rescale_24h enabled: True
+- raw nonzero hours: 8
+- raw hour>=8 share: 0.000000
 
 [chip]
 Sheets: output3_chip
@@ -51,14 +59,55 @@ Output files
 Server task profile
 Server task total: 51321
 arrival_time distribution:
-- hour 00: 3173
-- hour 01: 12658
-- hour 02: 25633
-- hour 03: 6422
-- hour 04: 2119
-- hour 05: 960
-- hour 06: 290
-- hour 07: 66
+- hour 00: 907
+- hour 01: 1031
+- hour 02: 1912
+- hour 03: 2837
+- hour 04: 4177
+- hour 05: 6689
+- hour 06: 7759
+- hour 07: 11358
+- hour 08: 7552
+- hour 09: 2360
+- hour 10: 939
+- hour 11: 773
+- hour 12: 832
+- hour 13: 678
+- hour 14: 435
+- hour 15: 462
+- hour 16: 211
+- hour 17: 175
+- hour 18: 97
+- hour 19: 65
+- hour 20: 23
+- hour 21: 16
+- hour 22: 14
+- hour 23: 19
+mapped hourly arrival distribution:
+- hour 00: 907
+- hour 01: 1031
+- hour 02: 1912
+- hour 03: 2837
+- hour 04: 4177
+- hour 05: 6689
+- hour 06: 7759
+- hour 07: 11358
+- hour 08: 7552
+- hour 09: 2360
+- hour 10: 939
+- hour 11: 773
+- hour 12: 832
+- hour 13: 678
+- hour 14: 435
+- hour 15: 462
+- hour 16: 211
+- hour 17: 175
+- hour 18: 97
+- hour 19: 65
+- hour 20: 23
+- hour 21: 16
+- hour 22: 14
+- hour 23: 19
 task_type distribution:
 - delay_tolerant: 46696
 - delay_sensitive: 4625
@@ -67,30 +116,30 @@ deadline < arrival_time anomalies: 0
 
 Hourly input overview
  hour  arrival_rate  price  power_limit
-    0          3173 42.620     1.000000
-    1         12658 40.530     1.000000
-    2         25633 34.475     1.000000
-    3          6422 40.450     0.913513
-    4          2119 27.825     0.931902
-    5           960 36.660     0.737548
-    6           290 39.635     0.750671
-    7            66 38.355     0.798914
-    8             0 41.750     0.661158
-    9             0 44.870     0.593102
-   10             0 55.860     0.501984
-   11             0 50.165     0.535841
-   12             0 44.210     0.570767
-   13             0 42.165     0.589896
-   14             0 42.660     0.622658
-   15             0 56.835     0.610323
-   16             0 69.580     0.585560
-   17             0 62.500     0.656676
-   18             0 53.460     0.729704
-   19             0 40.870     0.757436
-   20             0 36.960     0.733919
-   21             0 29.700     0.703038
-   22             0 15.720     0.702116
-   23             0 12.390     0.678690
+    0           907 42.620     1.000000
+    1          1031 40.530     1.000000
+    2          1912 34.475     1.000000
+    3          2837 40.450     0.913513
+    4          4177 27.825     0.931902
+    5          6689 36.660     0.737548
+    6          7759 39.635     0.750671
+    7         11358 38.355     0.798914
+    8          7552 41.750     0.661158
+    9          2360 44.870     0.593102
+   10           939 55.860     0.501984
+   11           773 50.165     0.535841
+   12           832 44.210     0.570767
+   13           678 42.165     0.589896
+   14           435 42.660     0.622658
+   15           462 56.835     0.610323
+   16           211 69.580     0.585560
+   17           175 62.500     0.656676
+   18            97 53.460     0.729704
+   19            65 40.870     0.757436
+   20            23 36.960     0.733919
+   21            16 29.700     0.703038
+   22            14 15.720     0.702116
+   23            19 12.390     0.678690
 
 Chip DVFS profile
 chip_dvfs rows: 21504

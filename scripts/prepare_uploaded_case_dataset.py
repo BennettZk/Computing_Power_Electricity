@@ -248,7 +248,41 @@ def _select_sheet(workbook: SimpleXlsxWorkbook, preferred: str | None, warnings:
     return sheet_name, workbook.read_sheet(sheet_name)
 
 
-def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+def _map_steps_to_hours(step_series: pd.Series, min_step: float, max_step: float, mode: str) -> pd.Series:
+    step_series = pd.Series(step_series, dtype="float64").fillna(min_step)
+    if mode == "raw_step":
+        return np.floor(step_series / 12).astype(int).clip(0, 23)
+    span = max(max_step - min_step, 1e-9)
+    return np.floor((step_series - min_step) / span * 23).astype(int).clip(0, 23)
+
+
+def _resolve_arrival_time_mode(arrival_step: pd.Series, requested_mode: str) -> tuple[str, dict]:
+    arrival_step = pd.Series(arrival_step, dtype="float64").fillna(0.0)
+    min_step = float(arrival_step.min()) if len(arrival_step) else 0.0
+    max_step = float(arrival_step.max()) if len(arrival_step) else 0.0
+    raw_hours = np.floor(arrival_step / 12).astype(int).clip(0, 23)
+    raw_counts = raw_hours.value_counts().reindex(range(24), fill_value=0)
+    nonzero_hours = int((raw_counts > 0).sum())
+    late_hour_share = float(raw_counts.loc[8:23].sum() / max(len(arrival_step), 1))
+    concentrated = nonzero_hours <= 10 or late_hour_share < 0.05
+    should_rescale = max_step < 288 or concentrated
+    if requested_mode == "auto":
+        resolved = "rescale_24h" if should_rescale else "raw_step"
+    else:
+        resolved = requested_mode
+    diagnostics = {
+        "arrival_step_min": min_step,
+        "arrival_step_max": max_step,
+        "raw_nonzero_hours": nonzero_hours,
+        "raw_late_hour_share": late_hour_share,
+        "auto_should_rescale": bool(should_rescale),
+        "arrival_time_mode_requested": requested_mode,
+        "arrival_time_mode_resolved": resolved,
+    }
+    return resolved, diagnostics
+
+
+def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int, arrival_time_mode: str) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     warnings: list[str] = []
     fill_counts: dict[str, int] = {}
     workbook = _read_workbook(server_xlsx)
@@ -280,8 +314,11 @@ def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int) -> tuple[p
     end_step = end_step.where(end_step > 0, end_step_default)
     cpu_demand = _numeric_series(df, cpu_col, 1.0, fill_counts, "cpu_demand").clip(lower=0.1)
 
-    arrival_hour = np.floor(arrival_step / 12).astype(int).clip(0, 23)
-    end_hour_raw = np.floor(end_step / 12).astype(int)
+    resolved_mode, time_mapping_meta = _resolve_arrival_time_mode(arrival_step, arrival_time_mode)
+    min_arrival_step = float(time_mapping_meta["arrival_step_min"])
+    max_arrival_step = float(time_mapping_meta["arrival_step_max"])
+    arrival_hour = _map_steps_to_hours(arrival_step, min_arrival_step, max_arrival_step, resolved_mode)
+    end_hour_raw = _map_steps_to_hours(end_step, min_arrival_step, max_arrival_step, resolved_mode)
     deadline_hour = end_hour_raw.clip(0, 23)
     deadline_hour = np.maximum(deadline_hour, arrival_hour)
     waiting_time_steps = scheduled_start_step - arrival_step
@@ -364,6 +401,7 @@ def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int) -> tuple[p
         "columns": list(df.columns),
         "warnings": warnings,
         "fill_counts": fill_counts,
+        "time_mapping": time_mapping_meta,
     }
     return mapped, task_24h, meta
 
@@ -494,6 +532,16 @@ def build_report(
         lines.append("Missing/fill counts:")
         for key, value in sorted(meta["fill_counts"].items()):
             lines.append(f"- {key}: {value}")
+        if name == "server" and "time_mapping" in meta:
+            mapping = meta["time_mapping"]
+            lines.append("Arrival time mapping:")
+            lines.append(f"- arrival_step min: {mapping['arrival_step_min']:.4f}")
+            lines.append(f"- arrival_step max: {mapping['arrival_step_max']:.4f}")
+            lines.append(f"- requested mode: {mapping['arrival_time_mode_requested']}")
+            lines.append(f"- resolved mode: {mapping['arrival_time_mode_resolved']}")
+            lines.append(f"- rescale_24h enabled: {mapping['arrival_time_mode_resolved'] == 'rescale_24h'}")
+            lines.append(f"- raw nonzero hours: {mapping['raw_nonzero_hours']}")
+            lines.append(f"- raw hour>=8 share: {mapping['raw_late_hour_share']:.6f}")
         lines.append("")
 
     lines.append("Output files")
@@ -508,6 +556,10 @@ def build_report(
     lines.append(f"Server task total: {len(server_tasks)}")
     lines.append("arrival_time distribution:")
     for hour, count in server_tasks["arrival_time"].value_counts().sort_index().items():
+        lines.append(f"- hour {int(hour):02d}: {int(count)}")
+    lines.append("mapped hourly arrival distribution:")
+    mapped_counts = server_tasks["arrival_time"].value_counts().reindex(range(24), fill_value=0).sort_index()
+    for hour, count in mapped_counts.items():
         lines.append(f"- hour {int(hour):02d}: {int(count)}")
     lines.append("task_type distribution:")
     for task_type, count in server_tasks["task_type"].value_counts().items():
@@ -549,6 +601,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR), help="Output directory for cleaned CSV files.")
     parser.add_argument("--report-path", default=str(DEFAULT_REPORT_PATH), help="Cleaning report path.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for deterministic helper fields.")
+    parser.add_argument(
+        "--arrival-time-mode",
+        choices=["auto", "raw_step", "rescale_24h"],
+        default="auto",
+        help="Map server arrival steps to 24 hours using raw 5-minute steps, min-max rescaling, or automatic selection.",
+    )
     return parser.parse_args()
 
 
@@ -564,7 +622,7 @@ def main() -> None:
         if not path.exists():
             raise FileNotFoundError(f"Input XLSX not found: {path}")
 
-    server_mapped, server_tasks, server_meta = clean_server_data(server_xlsx, output_dir, int(args.seed))
+    server_mapped, server_tasks, server_meta = clean_server_data(server_xlsx, output_dir, int(args.seed), args.arrival_time_mode)
     cluster, hourly_input, cluster_meta = clean_cluster_data(cluster_xlsx, output_dir, server_tasks)
     chip, chip_meta = clean_chip_data(chip_xlsx, output_dir)
 

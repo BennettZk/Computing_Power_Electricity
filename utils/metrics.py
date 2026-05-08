@@ -28,7 +28,11 @@ RESULT_CSV_COLUMN_MAPPING = {
     "cluster_cap_norm": "集群功率上限归一化",
     "server_load_norm": "服务器负载归一化",
     "chip_power_norm": "芯片功率归一化",
+    "chip_power_variation_norm": "芯片功率波动归一化",
+    "chip_power_ratio": "芯片功率占上限比例",
     "power_margin_norm": "等效功率裕度",
+    "power_margin_norm_old": "旧等效功率裕度",
+    "power_margin_norm_v2": "新等效功率裕度",
     "token_capacity": "Token产出能力",
     "export_tokens": "出口Token量",
     "total_export_tokens": "总出口Token量",
@@ -79,11 +83,16 @@ def normalize_by_max(values: pd.Series | np.ndarray) -> pd.Series:
     return (series / max_value).clip(lower=0.0, upper=1.0)
 
 
-def minmax_norm(values: pd.Series | np.ndarray) -> pd.Series:
+def normalize_minmax(values: pd.Series | np.ndarray) -> pd.Series:
+    """Min-max normalize a series; constants are mapped to all zeros."""
     series = pd.Series(values, dtype="float64").fillna(0.0)
     min_value = float(series.min())
     max_value = float(series.max())
     span = max_value - min_value
     if span <= 1e-12:
-        return normalize_by_max(series)
+        return pd.Series(np.zeros(len(series)), index=series.index)
     return ((series - min_value) / span).clip(lower=0.0, upper=1.0)
+
+
+def minmax_norm(values: pd.Series | np.ndarray) -> pd.Series:
+    return normalize_minmax(values)

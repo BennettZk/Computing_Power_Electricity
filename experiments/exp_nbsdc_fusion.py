@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
-from utils.metrics import normalize_by_max
+from utils.metrics import normalize_by_max, normalize_minmax
 from utils.plotting import save_bar_plot, save_line_plot, save_multi_line_plot, save_scatter_plot, setup_chinese_matplotlib
 
 
@@ -91,6 +91,13 @@ def _chip_hourly(chip_df: pd.DataFrame) -> pd.DataFrame:
     return hourly
 
 
+def _normalize_cluster_cap(power_cap: pd.Series) -> pd.Series:
+    values = pd.Series(power_cap, dtype="float64").fillna(0.0)
+    if float(values.min()) >= 0.0 and float(values.max()) <= 1.0:
+        return values.clip(lower=0.0, upper=1.0)
+    return normalize_minmax(values)
+
+
 def _save_distribution_tables(server_df: pd.DataFrame, output_dir: Path) -> dict[str, pd.DataFrame]:
     server = server_df.copy()
     server["cpu_demand"] = pd.to_numeric(server["cpu_demand"], errors="coerce").fillna(0.0)
@@ -150,8 +157,9 @@ def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> Non
 def run_nbsdc_fusion(
     data_dir: str | Path = "data/real_case",
     output_dir: str | Path = "outputs/nbsdc_fusion",
-    alpha: float = 0.5,
-    beta: float = 0.5,
+    alpha: float = 0.55,
+    beta: float = 0.25,
+    base_reserve: float = 0.10,
 ) -> dict[str, Path]:
     data_dir = Path(data_dir)
     output_dir = ensure_dir(output_dir)
@@ -174,14 +182,29 @@ def run_nbsdc_fusion(
         .merge(chip_hourly, on="hour", how="left")
         .merge(hourly_input[["hour", "arrival_rate"]], on="hour", how="left")
     )
-    aligned["cluster_cap_norm"] = normalize_by_max(aligned["hourly_power_cap"])
-    aligned["server_load_norm"] = normalize_by_max(aligned["hourly_cpu_demand"])
+    old_cluster_cap_norm = normalize_by_max(aligned["hourly_power_cap"])
+    old_server_load_norm = normalize_by_max(aligned["hourly_cpu_demand"])
     aligned["chip_power_norm"] = normalize_by_max(aligned["hourly_actual_power_w"])
-    aligned["power_margin_norm"] = (
-        aligned["cluster_cap_norm"] - alpha * aligned["server_load_norm"] - beta * aligned["chip_power_norm"]
+    aligned["power_margin_norm_old"] = (
+        old_cluster_cap_norm - 0.5 * old_server_load_norm - 0.5 * aligned["chip_power_norm"]
     ).clip(lower=0.0, upper=1.0)
+
+    aligned["cluster_cap_norm"] = _normalize_cluster_cap(aligned["hourly_power_cap"])
+    aligned["server_load_norm"] = normalize_minmax(aligned["hourly_cpu_demand"])
+    aligned["chip_power_variation_norm"] = normalize_minmax(aligned["hourly_actual_power_w"])
+    aligned["chip_power_ratio"] = (
+        aligned["hourly_actual_power_w"] / aligned["hourly_power_cap_w"].replace(0, np.nan)
+    ).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    aligned["power_margin_norm_v2"] = (
+        aligned["cluster_cap_norm"]
+        - alpha * aligned["server_load_norm"]
+        - beta * aligned["chip_power_variation_norm"]
+        - float(base_reserve)
+    ).clip(lower=0.0, upper=1.0)
+    aligned["power_margin_norm"] = aligned["power_margin_norm_v2"]
     aligned["alpha"] = float(alpha)
     aligned["beta"] = float(beta)
+    aligned["base_reserve"] = float(base_reserve)
 
     aligned_path = save_csv(aligned, output_dir / "aligned_hourly_fusion.csv")
     metrics_cols = [
@@ -202,6 +225,10 @@ def run_nbsdc_fusion(
         "cluster_cap_norm",
         "server_load_norm",
         "chip_power_norm",
+        "chip_power_variation_norm",
+        "chip_power_ratio",
+        "power_margin_norm_old",
+        "power_margin_norm_v2",
         "power_margin_norm",
     ]
     metrics_path = save_csv(aligned[metrics_cols], output_dir / "nbsdc_fusion_metrics.csv")
@@ -229,7 +256,7 @@ def run_nbsdc_fusion(
     save_multi_line_plot(
         aligned,
         x="hour",
-        y_columns=["cluster_cap_norm", "server_load_norm", "chip_power_norm", "power_margin_norm"],
+        y_columns=["cluster_cap_norm", "server_load_norm", "chip_power_variation_norm", "power_margin_norm"],
         path=output_dir / "three_layer_power_margin.png",
         title="三层数据融合下的等效功率裕度",
         xlabel="小时",
@@ -237,9 +264,19 @@ def run_nbsdc_fusion(
         labels={
             "cluster_cap_norm": "集群功率上限",
             "server_load_norm": "服务器负载",
-            "chip_power_norm": "芯片功率",
+            "chip_power_variation_norm": "芯片功率波动",
             "power_margin_norm": "等效功率裕度",
         },
+    )
+    save_multi_line_plot(
+        aligned,
+        x="hour",
+        y_columns=["power_margin_norm_old", "power_margin_norm"],
+        path=output_dir / "power_margin_old_vs_new.png",
+        title="新旧等效功率裕度对比",
+        xlabel="小时",
+        ylabel="等效功率裕度",
+        labels={"power_margin_norm_old": "旧公式", "power_margin_norm": "新公式"},
     )
     room_top = distributions["room"].head(12).copy()
     save_bar_plot(
@@ -264,12 +301,18 @@ def run_nbsdc_fusion(
         f"Average price: {aligned['price'].mean():.4f}",
         f"Average hourly task arrivals: {aligned['hourly_task_arrivals'].mean():.2f}",
         f"Average actual chip power: {aligned['hourly_actual_power_w'].mean():.4f} W",
+        f"Average chip power variation norm: {aligned['chip_power_variation_norm'].mean():.4f}",
+        f"Average chip power ratio: {aligned['chip_power_ratio'].mean():.4f}",
+        f"Average old power margin norm: {aligned['power_margin_norm_old'].mean():.4f}",
         f"Average power margin norm: {aligned['power_margin_norm'].mean():.4f}",
         f"Max power margin norm: {aligned['power_margin_norm'].max():.4f}",
         f"alpha: {alpha}",
         f"beta: {beta}",
+        f"base_reserve: {base_reserve}",
         "",
         "The fused power margin is a normalized scenario variable derived from cluster power cap, server load, and chip power response.",
+        "由于芯片实际功率存在较高基础功耗，本文采用 min-max 归一化刻画芯片功率的相对波动，避免最大值归一化导致曲线过平。",
+        "Because chip actual power contains a high base load, this version uses min-max normalization to represent relative chip-power variation and avoids an over-flat max-normalized chip curve.",
     ]
     summary_path = write_text(output_dir / "nbsdc_fusion_summary.txt", summary_lines)
 

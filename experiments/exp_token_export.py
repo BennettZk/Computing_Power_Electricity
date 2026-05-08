@@ -83,7 +83,7 @@ def _evaluate_hour(
         revenue
         - float(config["energy_cost_weight"]) * token_energy_cost
         - float(config["latency_penalty_weight"]) * avg_delay * export_million
-        - float(config["sla_penalty_weight"]) * sla_violation_rate * export_million
+        - float(config["sla_penalty_weight"]) * float(config.get("sla_penalty_unit_scale", 0.05)) * sla_violation_rate * export_million
         - float(config["ramp_penalty_weight"]) * ramp_excess_million
     )
 
@@ -250,18 +250,34 @@ def _run_sensitivity(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
                 "net_token_profit": summary["net_token_profit"],
                 "avg_cross_timezone_delay": summary["avg_cross_timezone_delay"],
                 "token_sla_violation_rate": summary["token_sla_violation_rate"],
+                "asia_export_tokens": summary["asia_export_tokens"],
+                "europe_export_tokens": summary["europe_export_tokens"],
+                "america_export_tokens": summary["america_export_tokens"],
+                "america_export_share": safe_divide(summary["america_export_tokens"], summary["total_export_tokens"]),
             }
         )
+
+    for sla_hours in [0.12, 0.20, 0.30, 0.40]:
+        cfg = deepcopy(config)
+        cfg["base_token_sla_hours"] = sla_hours
+        collect("base_token_sla_hours", sla_hours, cfg)
+
+    for scale in [0.8, 1.0, 1.5, 2.0]:
+        cfg = deepcopy(config)
+        for region_cfg in cfg["regions"].values():
+            region_cfg["latency_hours"] = float(region_cfg["latency_hours"]) * scale
+        collect("latency_scale", scale, cfg)
+
+    base_america_price = float(config["regions"]["America"]["price_per_million_tokens"])
+    for multiplier in [1.0, 1.2, 1.5, 1.8]:
+        cfg = deepcopy(config)
+        cfg["regions"]["America"]["price_per_million_tokens"] = base_america_price * multiplier
+        collect("america_price_multiplier", multiplier, cfg)
 
     for window in [2, 4, 6]:
         cfg = deepcopy(config)
         cfg["window_size_hours"] = window
         collect("window_size_hours", window, cfg)
-
-    for weight in [0.5, 1.0, 2.0]:
-        cfg = deepcopy(config)
-        cfg["latency_penalty_weight"] = weight
-        collect("latency_penalty_weight", weight, cfg)
 
     base_token_unit = float(config["token_per_margin_unit"])
     for factor in [0.8, 1.0, 1.2]:
@@ -315,27 +331,36 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.3))
-    window = sensitivity[sensitivity["parameter"] == "window_size_hours"]
-    latency = sensitivity[sensitivity["parameter"] == "latency_penalty_weight"]
-    token_unit = sensitivity[sensitivity["parameter"] == "token_per_margin_unit_factor"]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4.5))
+    sla = sensitivity[sensitivity["parameter"] == "base_token_sla_hours"]
+    latency = sensitivity[sensitivity["parameter"] == "latency_scale"]
+    america = sensitivity[sensitivity["parameter"] == "america_price_multiplier"]
 
-    axes[0].plot(window["value"], window["net_token_profit"], marker="o")
-    axes[0].set_title("窗口长度-净收益")
-    axes[0].set_xlabel("窗口长度/h")
-    axes[0].set_ylabel("净收益")
+    ax0b = axes[0].twinx()
+    axes[0].plot(sla["value"], sla["token_sla_violation_rate"], marker="o", color="#dc2626", label="SLA违约率")
+    ax0b.plot(sla["value"], sla["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[0].set_title("SLA阈值敏感性")
+    axes[0].set_xlabel("SLA阈值/h")
+    axes[0].set_ylabel("SLA违约率")
+    ax0b.set_ylabel("净收益")
     axes[0].grid(True, linestyle="--", alpha=0.3)
 
-    axes[1].plot(latency["value"], latency["avg_cross_timezone_delay"], marker="o", color="#16a34a")
-    axes[1].set_title("时延惩罚-平均时延")
-    axes[1].set_xlabel("时延惩罚权重")
+    ax1b = axes[1].twinx()
+    axes[1].plot(latency["value"], latency["avg_cross_timezone_delay"], marker="o", color="#16a34a", label="平均时延")
+    ax1b.plot(latency["value"], latency["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[1].set_title("跨时区时延放大敏感性")
+    axes[1].set_xlabel("时延放大系数")
     axes[1].set_ylabel("平均时延/h")
+    ax1b.set_ylabel("净收益")
     axes[1].grid(True, linestyle="--", alpha=0.3)
 
-    axes[2].plot(token_unit["value"], token_unit["total_export_tokens"] / 1_000_000.0, marker="o", color="#dc2626")
-    axes[2].set_title("Token产能系数-出口量")
-    axes[2].set_xlabel("产能系数倍数")
-    axes[2].set_ylabel("出口Token量/百万")
+    ax2b = axes[2].twinx()
+    axes[2].plot(america["value"], america["america_export_share"], marker="o", color="#f97316", label="America占比")
+    ax2b.plot(america["value"], america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[2].set_title("America价格倍率敏感性")
+    axes[2].set_xlabel("America价格倍率")
+    axes[2].set_ylabel("America出口占比")
+    ax2b.set_ylabel("净收益")
     axes[2].grid(True, linestyle="--", alpha=0.3)
 
     fig.suptitle("Token出口关键参数敏感性分析")
@@ -359,9 +384,6 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
     _plot_bar(summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益")
     _plot_bar(summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同策略跨时区服务时延对比", "平均时延/h")
 
-    curve = capacity_df.merge(
-        hourly_results[hourly_results["strategy"] == "RH-TEO"][["hour", "token_capacity"]], on=["hour", "token_capacity"], how="left"
-    )
     # Rebuild the curve from RH-TEO rows so the x-axis is the fused margin.
     rh_rows = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("token_capacity")
     margin_curve = rh_rows[["hour", "token_capacity"]].copy()
@@ -371,6 +393,22 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
         margin_curve["power_margin_norm"] = safe_divide(margin_curve["token_capacity"], margin_curve["token_capacity"].max())
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
+
+    rh_time = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("hour")
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+    ax1.plot(rh_time["hour"], rh_time["power_margin_norm"], marker="o", linewidth=2, color="#2563eb", label="等效功率裕度")
+    ax1.set_xlabel("小时")
+    ax1.set_ylabel("等效功率裕度")
+    ax1.grid(True, linestyle="--", alpha=0.3)
+    ax2 = ax1.twinx()
+    ax2.plot(rh_time["hour"], rh_time["token_capacity"], marker="s", linewidth=2, color="#dc2626", label="Token产出能力")
+    ax2.set_ylabel("Token产出能力")
+    lines = ax1.get_lines() + ax2.get_lines()
+    ax1.legend(lines, [line.get_label() for line in lines], loc="best")
+    ax1.set_title("等效功率裕度与Token产出能力时序关系")
+    fig.tight_layout()
+    fig.savefig(output_dir / "power_margin_token_capacity_timeseries.png")
+    plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 4.8))
     ax.plot(margin_curve["power_margin_norm"], margin_curve["token_capacity"], marker="o", linewidth=2)
@@ -437,7 +475,7 @@ def run_token_export(
         f"RH-TEO total export tokens: {summary.loc[summary['strategy'] == 'RH-TEO', 'total_export_tokens'].iloc[0]:.2f}",
         f"RH-TEO SLA violation rate: {summary.loc[summary['strategy'] == 'RH-TEO', 'token_sla_violation_rate'].iloc[0]:.6f}",
         "",
-        "Generated plots: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity.",
+        "Generated plots: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity.",
     ]
     summary_path = write_text(output_dir / "token_export_summary.txt", summary_lines)
 

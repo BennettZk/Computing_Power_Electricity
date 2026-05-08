@@ -5,6 +5,7 @@
   "ramp_limit_ratio": 0.35,
   "latency_penalty_weight": 1.0,
   "sla_penalty_weight": 5.0,
+  "sla_penalty_unit_scale": 0.05,
   "ramp_penalty_weight": 0.5,
   "energy_cost_weight": 1.0,
   "regions": {
