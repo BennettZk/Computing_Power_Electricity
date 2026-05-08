@@ -1,21 +1,20 @@
-NBSDC three-layer fusion summary
-======================================
-Cluster records: 288
-Server raw records: 51321
-Server 24h task records: 51321
-Chip DVFS records: 21504
-Average price: 41.6769
-Average hourly task arrivals: 2138.38
-Average actual chip power: 715.4670 W
-Average chip power variation norm: 0.4695
-Average chip power ratio: 0.9697
-Average old power margin norm: 0.1723
-Average power margin norm: 0.4150
-Max power margin norm: 0.6835
+NBSDC三层数据融合摘要
+============================
+集群级记录数: 288
+服务器级原始映射记录数: 51321
+服务器级24小时任务记录数: 51321
+芯片级DVFS记录数: 21504
+平均电价: 41.6769
+平均小时任务到达量: 2138.38
+芯片平均实际功率: 715.4670 W
+芯片功率波动归一化均值: 0.4695
+芯片实际功率/功率上限均值: 0.9697
+旧公式等效功率裕度均值: 0.1723
+新公式等效功率裕度均值: 0.4150
+新公式等效功率裕度最大值: 0.6835
 alpha: 0.55
 beta: 0.25
 base_reserve: 0.1
 
-The fused power margin is a normalized scenario variable derived from cluster power cap, server load, and chip power response.
+等效功率裕度由集群功率上限、服务器负载和芯片功率响应三层指标融合得到。
 由于芯片实际功率存在较高基础功耗，本文采用 min-max 归一化刻画芯片功率的相对波动，避免最大值归一化导致曲线过平。
-Because chip actual power contains a high base load, this version uses min-max normalization to represent relative chip-power variation and avoids an over-flat max-normalized chip curve.

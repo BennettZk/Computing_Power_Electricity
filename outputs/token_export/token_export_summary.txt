@@ -1,13 +1,13 @@
-Token export optimization summary
-===================================
-This is an extended Token export scenario derived from the fused NBSDC power margin.
-NBSDC source data is not treated as containing real Token request records.
+Token出口优化实验摘要
+============================
+本实验基于 NBSDC 三层融合得到的等效功率裕度构建 Token 出口扩展场景。
+NBSDC 源数据不被解释为真实 Token 请求记录。
 
-Token capacity coefficient: 1000000
-Rolling window size: 4 hours
-Best strategy by net profit: RH-TEO
-Best strategy net profit: 8.665399
-RH-TEO total export tokens: 8283641.68
-RH-TEO SLA violation rate: 0.172884
+Token产能系数: 1000000
+滚动窗口长度: 4 小时
+最优策略: RH-TEO策略
+最优策略净收益: 8.665399
+RH-TEO总出口Token量: 8283641.68
+RH-TEO SLA违约率: 0.172884
 
-Generated plots: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity.
+生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。

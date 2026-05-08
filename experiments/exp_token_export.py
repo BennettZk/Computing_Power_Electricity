@@ -18,6 +18,28 @@ REGION_COLUMNS = {
     "America": "america_export_tokens",
 }
 
+STRATEGY_LABELS = {
+    "No-Export": "不出口",
+    "Power-Margin-Only": "仅功率裕度",
+    "Price-Driven": "电价驱动",
+    "Latency-Aware": "时延感知",
+    "RH-TEO": "RH-TEO策略",
+}
+
+REGION_LABELS = {
+    "Asia": "亚洲",
+    "Europe": "欧洲",
+    "America": "美洲",
+}
+
+PARAMETER_LABELS = {
+    "base_token_sla_hours": "SLA阈值",
+    "latency_scale": "跨时区时延放大系数",
+    "america_price_multiplier": "美洲价格倍率",
+    "window_size_hours": "滚动窗口长度",
+    "token_per_margin_unit_factor": "Token产能系数",
+}
+
 
 def _token_capacity(fusion_df: pd.DataFrame, config: dict) -> pd.Series:
     return fusion_df["power_margin_norm"].clip(lower=0.0) * float(config["token_per_margin_unit"])
@@ -292,13 +314,15 @@ def _plot_region_export(region_results: pd.DataFrame, output_dir: Path) -> None:
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
-    pivot = region_results.pivot(index="strategy", columns="region", values="export_tokens").fillna(0.0) / 1_000_000.0
+    plot_df = region_results.copy()
+    plot_df["strategy_label"] = plot_df["strategy"].map(STRATEGY_LABELS).fillna(plot_df["strategy"])
+    pivot = plot_df.pivot(index="strategy_label", columns="region", values="export_tokens").fillna(0.0) / 1_000_000.0
     fig, ax = plt.subplots(figsize=(9, 5))
     bottom = np.zeros(len(pivot))
     colors = {"Asia": "#2563eb", "Europe": "#16a34a", "America": "#dc2626"}
     for region in ["Asia", "Europe", "America"]:
         values = pivot[region].values if region in pivot.columns else np.zeros(len(pivot))
-        ax.bar(pivot.index, values, bottom=bottom, label=region, color=colors[region])
+        ax.bar(pivot.index, values, bottom=bottom, label=REGION_LABELS[region], color=colors[region])
         bottom += values
     ax.set_title("不同地区Token出口量对比")
     ax.set_xlabel("策略")
@@ -315,8 +339,13 @@ def _plot_bar(df: pd.DataFrame, x: str, y: str, path: Path, title: str, ylabel: 
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
+    plot_df = df.copy()
+    x_col = x
+    if x == "strategy" and "strategy" in plot_df.columns:
+        plot_df["strategy_label"] = plot_df["strategy"].map(STRATEGY_LABELS).fillna(plot_df["strategy"])
+        x_col = "strategy_label"
     fig, ax = plt.subplots(figsize=(8.5, 4.8))
-    ax.bar(df[x], df[y], color="#2563eb")
+    ax.bar(plot_df[x_col], plot_df[y], color="#2563eb")
     ax.set_title(title)
     ax.set_xlabel("策略")
     ax.set_ylabel(ylabel)
@@ -355,11 +384,11 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     axes[1].grid(True, linestyle="--", alpha=0.3)
 
     ax2b = axes[2].twinx()
-    axes[2].plot(america["value"], america["america_export_share"], marker="o", color="#f97316", label="America占比")
+    axes[2].plot(america["value"], america["america_export_share"], marker="o", color="#f97316", label="美洲占比")
     ax2b.plot(america["value"], america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
-    axes[2].set_title("America价格倍率敏感性")
-    axes[2].set_xlabel("America价格倍率")
-    axes[2].set_ylabel("America出口占比")
+    axes[2].set_title("美洲价格倍率敏感性")
+    axes[2].set_xlabel("美洲价格倍率")
+    axes[2].set_ylabel("美洲出口占比")
     ax2b.set_ylabel("净收益")
     axes[2].grid(True, linestyle="--", alpha=0.3)
 
@@ -433,7 +462,7 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
         title="RH-TEO策略下跨时区Token分配曲线",
         xlabel="小时",
         ylabel="出口Token量/百万",
-        labels={"asia_export_tokens": "Asia", "europe_export_tokens": "Europe", "america_export_tokens": "America"},
+        labels={"asia_export_tokens": "亚洲", "europe_export_tokens": "欧洲", "america_export_tokens": "美洲"},
     )
     _plot_sensitivity(sensitivity, output_dir)
 
@@ -455,27 +484,34 @@ def run_token_export(
     sensitivity = _run_sensitivity(hourly, config)
 
     results_path = save_csv(summary, output_dir / "token_export_results.csv")
-    export_csv_chinese(summary, output_dir / "token_export_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    summary_cn = summary.copy()
+    summary_cn["strategy"] = summary_cn["strategy"].map(STRATEGY_LABELS).fillna(summary_cn["strategy"])
+    export_csv_chinese(summary_cn, output_dir / "token_export_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     hourly_path = save_csv(hourly_results, output_dir / "hourly_token_export.csv")
     region_path = save_csv(region_results, output_dir / "region_token_export.csv")
     sensitivity_path = save_csv(sensitivity, output_dir / "token_sensitivity_results.csv")
+    sensitivity_cn = sensitivity.copy()
+    sensitivity_cn["parameter"] = sensitivity_cn["parameter"].map(PARAMETER_LABELS).fillna(sensitivity_cn["parameter"])
+    export_csv_chinese(sensitivity_cn, output_dir / "token_sensitivity_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     _plot_outputs(summary, hourly_results, region_results, sensitivity, output_dir)
 
     best = summary.sort_values("net_token_profit", ascending=False).iloc[0]
+    best_strategy_label = STRATEGY_LABELS.get(str(best["strategy"]), str(best["strategy"]))
+    rh_row = summary.loc[summary["strategy"] == "RH-TEO"].iloc[0]
     summary_lines = [
-        "Token export optimization summary",
-        "=" * 35,
-        "This is an extended Token export scenario derived from the fused NBSDC power margin.",
-        "NBSDC source data is not treated as containing real Token request records.",
+        "Token出口优化实验摘要",
+        "=" * 28,
+        "本实验基于 NBSDC 三层融合得到的等效功率裕度构建 Token 出口扩展场景。",
+        "NBSDC 源数据不被解释为真实 Token 请求记录。",
         "",
-        f"Token capacity coefficient: {config['token_per_margin_unit']}",
-        f"Rolling window size: {config['window_size_hours']} hours",
-        f"Best strategy by net profit: {best['strategy']}",
-        f"Best strategy net profit: {best['net_token_profit']:.6f}",
-        f"RH-TEO total export tokens: {summary.loc[summary['strategy'] == 'RH-TEO', 'total_export_tokens'].iloc[0]:.2f}",
-        f"RH-TEO SLA violation rate: {summary.loc[summary['strategy'] == 'RH-TEO', 'token_sla_violation_rate'].iloc[0]:.6f}",
+        f"Token产能系数: {config['token_per_margin_unit']}",
+        f"滚动窗口长度: {config['window_size_hours']} 小时",
+        f"最优策略: {best_strategy_label}",
+        f"最优策略净收益: {best['net_token_profit']:.6f}",
+        f"RH-TEO总出口Token量: {rh_row['total_export_tokens']:.2f}",
+        f"RH-TEO SLA违约率: {rh_row['token_sla_violation_rate']:.6f}",
         "",
-        "Generated plots: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity.",
+        "生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。",
     ]
     summary_path = write_text(output_dir / "token_export_summary.txt", summary_lines)
 
@@ -484,5 +520,6 @@ def run_token_export(
         "hourly_token_export": hourly_path,
         "region_token_export": region_path,
         "token_sensitivity_results": sensitivity_path,
+        "token_sensitivity_results_cn": output_dir / "token_sensitivity_results_cn.csv",
         "summary": summary_path,
     }
