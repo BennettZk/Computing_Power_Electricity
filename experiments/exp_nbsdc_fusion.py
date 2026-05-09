@@ -157,6 +157,42 @@ def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> Non
     )
 
 
+def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) -> None:
+    setup_chinese_matplotlib()
+    import matplotlib.pyplot as plt
+
+    server = server_df.copy()
+    server["arrival_time"] = pd.to_numeric(server["arrival_time"], errors="coerce").fillna(0).astype(int).clip(0, 23)
+    if "server_room_id" not in server.columns:
+        server["server_room_id"] = "unknown_room"
+    server["server_room_id"] = server["server_room_id"].astype(str)
+
+    heatmap_df = (
+        server.groupby(["server_room_id", "arrival_time"], as_index=False)
+        .agg(task_count=("task_id", "count"))
+        .pivot(index="server_room_id", columns="arrival_time", values="task_count")
+        .reindex(columns=range(24), fill_value=0)
+        .fillna(0)
+    )
+    heatmap_df = heatmap_df.sort_index()
+
+    fig_height = max(3.8, min(8.0, 0.45 * max(len(heatmap_df), 1) + 2.2))
+    fig, ax = plt.subplots(figsize=(10, fig_height))
+    image = ax.imshow(heatmap_df.values, aspect="auto", cmap="YlOrRd")
+    ax.set_title("不同机房小时级任务分布")
+    ax.set_xlabel("小时")
+    ax.set_ylabel("机房")
+    ax.set_xticks(range(24))
+    ax.set_xticklabels([str(hour) for hour in range(24)])
+    ax.set_yticks(range(len(heatmap_df.index)))
+    ax.set_yticklabels(heatmap_df.index.tolist())
+    colorbar = fig.colorbar(image, ax=ax)
+    colorbar.set_label("任务数量")
+    fig.tight_layout()
+    fig.savefig(output_dir / "room_hourly_task_heatmap.png")
+    plt.close(fig)
+
+
 def run_nbsdc_fusion(
     data_dir: str | Path = "data/real_case",
     output_dir: str | Path = "outputs/nbsdc_fusion",
@@ -278,19 +314,24 @@ def run_nbsdc_fusion(
         aligned,
         x="hour",
         y_columns=["power_margin_norm_old", "power_margin_norm"],
-        path=output_dir / "power_margin_old_vs_new.png",
-        title="新旧等效功率裕度对比",
+        path=output_dir / "power_margin_baseline_vs_fused.png",
+        title="基准裕度与三层融合裕度对比",
         xlabel="小时",
         ylabel="等效功率裕度",
-        labels={"power_margin_norm_old": "旧公式", "power_margin_norm": "新公式"},
+        labels={"power_margin_norm_old": "基准裕度", "power_margin_norm": "三层融合裕度"},
     )
+    stale_old_plot = output_dir / "power_margin_old_vs_new.png"
+    if stale_old_plot.exists():
+        stale_old_plot.unlink()
+
+    _plot_room_hourly_task_heatmap(server_24h, output_dir)
     room_top = distributions["room"].head(12).copy()
     save_bar_plot(
         room_top,
         x="server_room_id",
         y="task_count",
         path=output_dir / "room_task_distribution.png",
-        title="不同机房任务分布",
+        title="不同机房任务总量分布（辅助）",
         xlabel="机房",
         ylabel="任务数量",
         rotation=30,
@@ -309,9 +350,9 @@ def run_nbsdc_fusion(
         f"芯片平均实际功率: {aligned['hourly_actual_power_w'].mean():.4f} W",
         f"芯片功率波动归一化均值: {aligned['chip_power_variation_norm'].mean():.4f}",
         f"芯片实际功率/功率上限均值: {aligned['chip_power_ratio'].mean():.4f}",
-        f"旧公式等效功率裕度均值: {aligned['power_margin_norm_old'].mean():.4f}",
-        f"新公式等效功率裕度均值: {aligned['power_margin_norm'].mean():.4f}",
-        f"新公式等效功率裕度最大值: {aligned['power_margin_norm'].max():.4f}",
+        f"基准等效功率裕度均值: {aligned['power_margin_norm_old'].mean():.4f}",
+        f"三层融合等效功率裕度均值: {aligned['power_margin_norm'].mean():.4f}",
+        f"三层融合等效功率裕度最大值: {aligned['power_margin_norm'].max():.4f}",
         f"alpha: {alpha}",
         f"beta: {beta}",
         f"base_reserve: {base_reserve}",
