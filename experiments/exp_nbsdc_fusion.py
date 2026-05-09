@@ -10,6 +10,16 @@ from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, normali
 from utils.plotting import save_bar_plot, save_line_plot, save_multi_line_plot, save_scatter_plot, setup_chinese_matplotlib
 
 
+def _natural_sort_key(value):
+    import re
+
+    text = str(value)
+    match = re.search(r"\d+", text)
+    if match:
+        return (0, int(match.group()), text)
+    return (1, text)
+
+
 def _hours() -> pd.DataFrame:
     return pd.DataFrame({"hour": range(24)})
 
@@ -105,12 +115,13 @@ def _save_distribution_tables(server_df: pd.DataFrame, output_dir: Path) -> dict
     def distribution(column: str, label: str) -> pd.DataFrame:
         if column not in server.columns:
             return pd.DataFrame({label: ["unknown"], "task_count": [len(server)], "cpu_usage": [server["cpu_demand"].sum()]})
-        return (
+        dist = (
             server.groupby(column, as_index=False)
             .agg(task_count=("task_id", "count"), cpu_usage=("cpu_demand", "sum"))
             .rename(columns={column: label})
-            .sort_values("task_count", ascending=False)
         )
+        dist["_sort_key"] = dist[label].map(_natural_sort_key)
+        return dist.sort_values("_sort_key").drop(columns="_sort_key").reset_index(drop=True)
 
     room = distribution("server_room_id", "server_room_id")
     rack = distribution("rack_id", "rack_id")
@@ -174,7 +185,8 @@ def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) ->
         .reindex(columns=range(24), fill_value=0)
         .fillna(0)
     )
-    heatmap_df = heatmap_df.sort_index()
+    ordered_index = sorted(heatmap_df.index.tolist(), key=_natural_sort_key)
+    heatmap_df = heatmap_df.reindex(ordered_index)
 
     fig_height = max(3.8, min(8.0, 0.45 * max(len(heatmap_df), 1) + 2.2))
     fig, ax = plt.subplots(figsize=(10, fig_height))
