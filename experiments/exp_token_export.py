@@ -354,6 +354,40 @@ def _plot_bar(df: pd.DataFrame, x: str, y: str, path: Path, title: str, ylabel: 
     plt.close(fig)
 
 
+def _plot_profit_latency_tradeoff(summary: pd.DataFrame, output_dir: Path) -> None:
+    setup_chinese_matplotlib()
+    import matplotlib.pyplot as plt
+
+    plot_df = summary.copy()
+    plot_df["strategy_label"] = plot_df["strategy"].map(STRATEGY_LABELS).fillna(plot_df["strategy"])
+
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+    bars = ax1.bar(plot_df["strategy_label"], plot_df["net_token_profit"], color="#2563eb", label="Token净收益")
+    ax1.set_title("Token出口策略收益与时延权衡对比")
+    ax1.set_xlabel("策略")
+    ax1.set_ylabel("Token净收益")
+    ax1.tick_params(axis="x", rotation=20)
+    ax1.grid(True, axis="y", linestyle="--", alpha=0.3)
+
+    ax2 = ax1.twinx()
+    line = ax2.plot(
+        plot_df["strategy_label"],
+        plot_df["avg_cross_timezone_delay"],
+        marker="o",
+        linewidth=2,
+        color="#dc2626",
+        label="平均跨时区时延",
+    )
+    ax2.set_ylabel("平均跨时区时延/h")
+
+    handles = [bars, line[0]]
+    labels = ["Token净收益", "平均跨时区时延"]
+    ax1.legend(handles, labels, loc="best")
+    fig.tight_layout()
+    fig.savefig(output_dir / "token_profit_latency_tradeoff.png")
+    plt.close(fig)
+
+
 def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
@@ -418,6 +452,7 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
     _plot_region_export(plot_region_results, output_dir)
     _plot_bar(plot_summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益")
     _plot_bar(plot_summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同Token出口策略跨时区服务时延对比", "平均时延/h")
+    _plot_profit_latency_tradeoff(plot_summary, output_dir)
 
     # Rebuild the curve from RH-TEO rows so the x-axis is the fused margin.
     rh_rows = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("token_capacity")
@@ -431,15 +466,31 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
 
     rh_time = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("hour")
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    ax1.plot(rh_time["hour"], rh_time["power_margin_norm"], marker="o", linewidth=2, color="#2563eb", label="等效功率裕度")
+    margin_line = ax1.plot(
+        rh_time["hour"],
+        rh_time["power_margin_norm"],
+        marker="o",
+        linewidth=2.4,
+        color="#2563eb",
+        label="等效功率裕度",
+        zorder=3,
+    )
     ax1.set_xlabel("小时")
     ax1.set_ylabel("等效功率裕度")
     ax1.grid(True, linestyle="--", alpha=0.3)
     ax2 = ax1.twinx()
-    ax2.plot(rh_time["hour"], rh_time["token_capacity"], marker="s", linewidth=2, color="#dc2626", label="Token产出能力")
+    capacity_bars = ax2.bar(
+        rh_time["hour"],
+        rh_time["token_capacity"],
+        color="#dc2626",
+        alpha=0.35,
+        label="Token产出能力",
+        zorder=1,
+    )
     ax2.set_ylabel("Token产出能力")
-    lines = ax1.get_lines() + ax2.get_lines()
-    ax1.legend(lines, [line.get_label() for line in lines], loc="best")
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
+    ax1.legend([margin_line[0], capacity_bars], ["等效功率裕度", "Token产出能力"], loc="best")
     ax1.set_title("等效功率裕度与Token产出能力时序关系")
     fig.tight_layout()
     fig.savefig(output_dir / "power_margin_token_capacity_timeseries.png")
@@ -524,7 +575,7 @@ def run_token_export(
         "“不出口”作为零出口基准保留在结果表中，不参与主要图表展示；主要图表比较的是实际发生 Token 出口的策略。",
         "“不出口”无跨时区服务时延，因此不参与跨时区服务时延图比较。",
         "",
-        "生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。",
+        "生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, token_profit_latency_tradeoff, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。",
     ]
     summary_path = write_text(output_dir / "token_export_summary.txt", summary_lines)
 

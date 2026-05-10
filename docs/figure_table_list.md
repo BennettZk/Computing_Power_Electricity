@@ -8,14 +8,15 @@
 4. 三层数据融合下的等效功率裕度：`outputs/nbsdc_fusion/three_layer_power_margin.png`
 5. 基准裕度与三层融合裕度对比：`outputs/nbsdc_fusion/power_margin_baseline_vs_fused.png`
 6. 不同机房小时级任务分布热力图：`outputs/nbsdc_fusion/room_hourly_task_heatmap.png`
-7. 等效功率裕度与Token产出能力时序关系：`outputs/token_export/power_margin_token_capacity_timeseries.png`
-8. 不同Token出口策略净收益对比：`outputs/token_export/token_profit_comparison.png`
-9. 不同地区Token出口量对比：`outputs/token_export/token_export_by_region.png`
-10. 不同策略跨时区服务时延对比：`outputs/token_export/cross_timezone_latency.png`
+7. 等效功率裕度与Token产出能力时序关系：`outputs/token_export/power_margin_token_capacity_timeseries.png`，用于展示等效功率裕度到 Token 产出能力的映射关系，属于模型关系说明图，不作为核心策略优劣对比图。
+8. Token出口策略收益与时延权衡对比：`outputs/token_export/token_profit_latency_tradeoff.png`
+9. 不同Token出口策略净收益对比：`outputs/token_export/token_profit_comparison.png`
+10. 不同地区Token出口量对比：`outputs/token_export/token_export_by_region.png`
 11. Token出口关键参数敏感性分析：`outputs/token_export/token_sensitivity.png`
 
 ## 辅助图
 
+- 不同Token出口策略跨时区服务时延对比：`outputs/token_export/cross_timezone_latency.png`
 - 小时级Token产出能力：`outputs/token_export/hourly_token_capacity.png`
 - RH-TEO策略下跨时区Token分配曲线：`outputs/token_export/rh_teo_allocation_curve.png`
 - 芯片实际功率与功率上限对比：`outputs/nbsdc_fusion/chip_actual_vs_cap.png`
