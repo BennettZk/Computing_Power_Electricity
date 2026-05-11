@@ -7,7 +7,17 @@ import pandas as pd
 
 from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
 from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, normalize_by_max, normalize_minmax
-from utils.plotting import save_bar_plot, save_line_plot, save_multi_line_plot, save_scatter_plot, setup_chinese_matplotlib
+from utils.plotting import (
+    PAPER_COLORS,
+    apply_paper_axes,
+    format_hour_axis,
+    save_bar_plot,
+    save_figure,
+    save_line_plot,
+    save_multi_line_plot,
+    save_scatter_plot,
+    setup_chinese_matplotlib,
+)
 
 
 def _natural_sort_key(value):
@@ -139,19 +149,23 @@ def _plot_price_powercap(aligned: pd.DataFrame, output_dir: Path) -> None:
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
+    price_color = PAPER_COLORS["blue"]
+    cap_color = PAPER_COLORS["green"]
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    ax1.plot(aligned["hour"], aligned["price"], marker="o", linewidth=2, color="#2563eb", label="电价")
-    ax1.set_xlabel("小时")
-    ax1.set_ylabel("电价")
-    ax1.grid(True, linestyle="--", alpha=0.3)
+    ax1.plot(aligned["hour"], aligned["price"], marker="o", linewidth=2.6, color=price_color, label="电价")
+    ax1.set_xlabel("小时/h")
+    ax1.set_ylabel("电价/(USD/MWh)", color=price_color)
+    ax1.tick_params(axis="y", colors=price_color)
+    apply_paper_axes(ax1)
+    format_hour_axis(ax1)
     ax2 = ax1.twinx()
-    ax2.plot(aligned["hour"], aligned["hourly_power_cap"], marker="s", linewidth=2, color="#dc2626", label="功率上限")
-    ax2.set_ylabel("功率上限")
+    ax2.plot(aligned["hour"], aligned["hourly_power_cap"], marker="s", linewidth=2.3, color=cap_color, label="功率上限")
+    ax2.set_ylabel("功率上限/(p.u.)", color=cap_color)
+    ax2.tick_params(axis="y", colors=cap_color)
     lines = ax1.get_lines() + ax2.get_lines()
-    ax1.legend(lines, [line.get_label() for line in lines], loc="best")
+    ax1.legend(lines, [line.get_label() for line in lines], loc="upper right")
     ax1.set_title("电价与功率上限关系")
-    fig.tight_layout()
-    fig.savefig(output_dir / "price_powercap.png")
+    save_figure(fig, output_dir / "price_powercap.png")
     plt.close(fig)
 
 
@@ -162,7 +176,7 @@ def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> Non
         y_columns=["hourly_actual_power_w", "hourly_power_cap_w"],
         path=output_dir / "chip_actual_vs_cap.png",
         title="芯片实际功率与功率上限对比",
-        xlabel="小时",
+        xlabel="小时/h",
         ylabel="功率/W",
         labels={"hourly_actual_power_w": "实际功率", "hourly_power_cap_w": "功率上限"},
     )
@@ -190,18 +204,17 @@ def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) ->
 
     fig_height = max(3.8, min(8.0, 0.45 * max(len(heatmap_df), 1) + 2.2))
     fig, ax = plt.subplots(figsize=(10, fig_height))
-    image = ax.imshow(heatmap_df.values, aspect="auto", cmap="YlOrRd")
+    image = ax.imshow(heatmap_df.values, aspect="auto", cmap="Blues")
     ax.set_title("不同机房小时级任务分布")
-    ax.set_xlabel("小时")
+    ax.set_xlabel("小时/h")
     ax.set_ylabel("机房")
     ax.set_xticks(range(24))
     ax.set_xticklabels([str(hour) for hour in range(24)])
     ax.set_yticks(range(len(heatmap_df.index)))
     ax.set_yticklabels(heatmap_df.index.tolist())
     colorbar = fig.colorbar(image, ax=ax)
-    colorbar.set_label("任务数量")
-    fig.tight_layout()
-    fig.savefig(output_dir / "room_hourly_task_heatmap.png")
+    colorbar.set_label("任务数量/个")
+    save_figure(fig, output_dir / "room_hourly_task_heatmap.png")
     plt.close(fig)
 
 
@@ -294,8 +307,8 @@ def run_nbsdc_fusion(
         y="hourly_task_arrivals",
         path=output_dir / "hourly_task_arrivals.png",
         title="服务器级24小时任务到达量",
-        xlabel="小时",
-        ylabel="任务到达量",
+        xlabel="小时/h",
+        ylabel="任务到达量/个",
     )
     chip_scatter = _derive_chip_hour(chip).sample(n=min(len(chip), 3000), random_state=42) if len(chip) else chip
     save_scatter_plot(
@@ -313,7 +326,7 @@ def run_nbsdc_fusion(
         y_columns=["cluster_cap_norm", "server_load_norm", "chip_power_variation_norm", "power_margin_norm"],
         path=output_dir / "three_layer_power_margin.png",
         title="三层数据融合下的等效功率裕度",
-        xlabel="小时",
+        xlabel="小时/h",
         ylabel="归一化值",
         labels={
             "cluster_cap_norm": "集群功率上限",
@@ -328,7 +341,7 @@ def run_nbsdc_fusion(
         y_columns=["power_margin_norm_old", "power_margin_norm"],
         path=output_dir / "power_margin_baseline_vs_fused.png",
         title="基准裕度与三层融合裕度对比",
-        xlabel="小时",
+        xlabel="小时/h",
         ylabel="等效功率裕度",
         labels={"power_margin_norm_old": "基准裕度", "power_margin_norm": "三层融合裕度"},
     )
@@ -345,7 +358,7 @@ def run_nbsdc_fusion(
         path=output_dir / "room_task_distribution.png",
         title="不同机房任务总量分布（辅助）",
         xlabel="机房",
-        ylabel="任务数量",
+        ylabel="任务数量/个",
         rotation=30,
     )
     _plot_chip_actual_vs_cap(chip_hourly, output_dir)

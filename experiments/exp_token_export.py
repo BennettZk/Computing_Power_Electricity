@@ -20,7 +20,15 @@ from utils.metrics import (
     localize_strategy_values,
     safe_divide,
 )
-from utils.plotting import save_line_plot, save_multi_line_plot, setup_chinese_matplotlib
+from utils.plotting import (
+    PAPER_COLORS,
+    apply_paper_axes,
+    format_hour_axis,
+    save_figure,
+    save_line_plot,
+    save_multi_line_plot,
+    setup_chinese_matplotlib,
+)
 
 
 REGION_COLUMNS = {
@@ -317,19 +325,18 @@ def _plot_region_export(region_results: pd.DataFrame, output_dir: Path) -> None:
     pivot = plot_df.pivot(index="strategy_label", columns="region", values="export_tokens").fillna(0.0) / 1_000_000.0
     fig, ax = plt.subplots(figsize=(9, 5))
     bottom = np.zeros(len(pivot))
-    colors = {"Domestic": "#2563eb", "Europe": "#16a34a", "NorthAmerica": "#dc2626"}
+    colors = {"Domestic": PAPER_COLORS["blue"], "Europe": PAPER_COLORS["green"], "NorthAmerica": PAPER_COLORS["orange"]}
     for region in ["Domestic", "Europe", "NorthAmerica"]:
         values = pivot[region].values if region in pivot.columns else np.zeros(len(pivot))
-        ax.bar(pivot.index, values, bottom=bottom, label=REGION_LABELS[region], color=colors[region])
+        ax.bar(pivot.index, values, bottom=bottom, label=REGION_LABELS[region], color=colors[region], alpha=0.88)
         bottom += values
     ax.set_title("不同地区Token出口量对比")
     ax.set_xlabel("策略")
-    ax.set_ylabel("出口Token量/百万")
+    ax.set_ylabel("出口Token量/百万Token")
     ax.tick_params(axis="x", rotation=20)
-    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(output_dir / "token_export_by_region.png")
+    apply_paper_axes(ax, grid_axis="y")
+    ax.legend(title="出口地区", ncol=3, loc="upper left")
+    save_figure(fig, output_dir / "token_export_by_region.png")
     plt.close(fig)
 
 
@@ -343,14 +350,14 @@ def _plot_bar(df: pd.DataFrame, x: str, y: str, path: Path, title: str, ylabel: 
         plot_df["strategy_label"] = plot_df["strategy"].map(STRATEGY_LABELS).fillna(plot_df["strategy"])
         x_col = "strategy_label"
     fig, ax = plt.subplots(figsize=(8.5, 4.8))
-    ax.bar(plot_df[x_col], plot_df[y], color="#2563eb")
+    colors = [PAPER_COLORS["green"] if str(label).startswith("RH-TEO") else PAPER_COLORS["blue"] for label in plot_df[x_col]]
+    ax.bar(plot_df[x_col], plot_df[y], color=colors, alpha=0.88)
     ax.set_title(title)
     ax.set_xlabel("策略")
     ax.set_ylabel(ylabel)
     ax.tick_params(axis="x", rotation=20)
-    ax.grid(True, axis="y", linestyle="--", alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(path)
+    apply_paper_axes(ax, grid_axis="y")
+    save_figure(fig, path)
     plt.close(fig)
 
 
@@ -361,30 +368,34 @@ def _plot_profit_latency_tradeoff(summary: pd.DataFrame, output_dir: Path) -> No
     plot_df = summary.copy()
     plot_df["strategy_label"] = plot_df["strategy"].map(STRATEGY_LABELS).fillna(plot_df["strategy"])
 
+    profit_color = PAPER_COLORS["blue"]
+    delay_color = PAPER_COLORS["orange"]
     fig, ax1 = plt.subplots(figsize=(9, 5))
-    bars = ax1.bar(plot_df["strategy_label"], plot_df["net_token_profit"], color="#2563eb", label="Token净收益")
+    bar_colors = [PAPER_COLORS["green"] if str(label).startswith("RH-TEO") else profit_color for label in plot_df["strategy_label"]]
+    bars = ax1.bar(plot_df["strategy_label"], plot_df["net_token_profit"], color=bar_colors, alpha=0.88, label="Token净收益")
     ax1.set_title("Token出口策略收益与时延权衡对比")
     ax1.set_xlabel("策略")
-    ax1.set_ylabel("Token净收益")
+    ax1.set_ylabel("Token净收益/(USD)", color=profit_color)
+    ax1.tick_params(axis="y", colors=profit_color)
     ax1.tick_params(axis="x", rotation=20)
-    ax1.grid(True, axis="y", linestyle="--", alpha=0.3)
+    apply_paper_axes(ax1, grid_axis="y")
 
     ax2 = ax1.twinx()
     line = ax2.plot(
         plot_df["strategy_label"],
         plot_df["avg_cross_timezone_delay"],
         marker="o",
-        linewidth=2,
-        color="#dc2626",
+        linewidth=2.6,
+        color=delay_color,
         label="平均跨时区时延",
     )
-    ax2.set_ylabel("平均跨时区时延/h")
+    ax2.set_ylabel("平均跨时区时延/h", color=delay_color)
+    ax2.tick_params(axis="y", colors=delay_color)
 
     handles = [bars, line[0]]
     labels = ["Token净收益", "平均跨时区时延"]
-    ax1.legend(handles, labels, loc="best")
-    fig.tight_layout()
-    fig.savefig(output_dir / "token_profit_latency_tradeoff.png")
+    ax1.legend(handles, labels, loc="upper left")
+    save_figure(fig, output_dir / "token_profit_latency_tradeoff.png")
     plt.close(fig)
 
 
@@ -397,42 +408,52 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
     latency = sensitivity[sensitivity["parameter"] == "latency_scale"]
     north_america = sensitivity[sensitivity["parameter"] == "north_america_price_multiplier"]
 
+    profit_color = PAPER_COLORS["blue"]
+    violation_color = PAPER_COLORS["red"]
+    delay_color = PAPER_COLORS["green"]
+    share_color = PAPER_COLORS["orange"]
+
     ax0b = axes[0].twinx()
-    axes[0].plot(sla["value"], sla["token_sla_violation_rate"], marker="o", color="#dc2626", label="SLA违约率")
-    ax0b.plot(sla["value"], sla["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[0].plot(sla["value"], sla["token_sla_violation_rate"], marker="o", linewidth=2.2, color=violation_color, label="SLA违约率")
+    ax0b.plot(sla["value"], sla["net_token_profit"], marker="s", linewidth=2.8, color=profit_color, label="净收益")
     axes[0].set_title("SLA阈值敏感性")
     axes[0].set_xlabel("SLA阈值/h")
-    axes[0].set_ylabel("SLA违约率")
-    ax0b.set_ylabel("净收益")
-    axes[0].grid(True, linestyle="--", alpha=0.3)
+    axes[0].set_ylabel("SLA违约率", color=violation_color)
+    axes[0].tick_params(axis="y", colors=violation_color)
+    ax0b.set_ylabel("净收益/(USD)", color=profit_color)
+    ax0b.tick_params(axis="y", colors=profit_color)
+    apply_paper_axes(axes[0])
     lines = axes[0].get_lines() + ax0b.get_lines()
     axes[0].legend(lines, [line.get_label() for line in lines], loc="best")
 
     ax1b = axes[1].twinx()
-    axes[1].plot(latency["value"], latency["avg_cross_timezone_delay"], marker="o", color="#16a34a", label="平均时延")
-    ax1b.plot(latency["value"], latency["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[1].plot(latency["value"], latency["avg_cross_timezone_delay"], marker="o", linewidth=2.2, color=delay_color, label="平均时延")
+    ax1b.plot(latency["value"], latency["net_token_profit"], marker="s", linewidth=2.8, color=profit_color, label="净收益")
     axes[1].set_title("跨时区时延放大敏感性")
     axes[1].set_xlabel("时延放大系数")
-    axes[1].set_ylabel("平均时延/h")
-    ax1b.set_ylabel("净收益")
-    axes[1].grid(True, linestyle="--", alpha=0.3)
+    axes[1].set_ylabel("平均时延/h", color=delay_color)
+    axes[1].tick_params(axis="y", colors=delay_color)
+    ax1b.set_ylabel("净收益/(USD)", color=profit_color)
+    ax1b.tick_params(axis="y", colors=profit_color)
+    apply_paper_axes(axes[1])
     lines = axes[1].get_lines() + ax1b.get_lines()
     axes[1].legend(lines, [line.get_label() for line in lines], loc="best")
 
     ax2b = axes[2].twinx()
-    axes[2].plot(north_america["value"], north_america["north_america_export_share"], marker="o", color="#f97316", label="美洲出口占比")
-    ax2b.plot(north_america["value"], north_america["net_token_profit"], marker="s", color="#2563eb", label="净收益")
+    axes[2].plot(north_america["value"], north_america["north_america_export_share"], marker="o", linewidth=2.2, color=share_color, label="北美出口占比")
+    ax2b.plot(north_america["value"], north_america["net_token_profit"], marker="s", linewidth=2.8, color=profit_color, label="净收益")
     axes[2].set_title("远端出口市场价格敏感性")
     axes[2].set_xlabel("北美价格倍率")
-    axes[2].set_ylabel("北美出口占比")
-    ax2b.set_ylabel("净收益")
-    axes[2].grid(True, linestyle="--", alpha=0.3)
+    axes[2].set_ylabel("北美出口占比", color=share_color)
+    axes[2].tick_params(axis="y", colors=share_color)
+    ax2b.set_ylabel("净收益/(USD)", color=profit_color)
+    ax2b.tick_params(axis="y", colors=profit_color)
+    apply_paper_axes(axes[2])
     lines = axes[2].get_lines() + ax2b.get_lines()
     axes[2].legend(lines, [line.get_label() for line in lines], loc="best")
 
     fig.suptitle("Token出口关键参数敏感性分析")
-    fig.tight_layout()
-    fig.savefig(output_dir / "token_sensitivity.png")
+    save_figure(fig, output_dir / "token_sensitivity.png")
     plt.close(fig)
 
 
@@ -446,11 +467,11 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
         y="token_capacity",
         path=output_dir / "hourly_token_capacity.png",
         title="小时级Token产出能力",
-        xlabel="小时",
-        ylabel="Token产出能力",
+        xlabel="小时/h",
+        ylabel="Token产出能力/(tokens/h)",
     )
     _plot_region_export(plot_region_results, output_dir)
-    _plot_bar(plot_summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益")
+    _plot_bar(plot_summary, "strategy", "net_token_profit", output_dir / "token_profit_comparison.png", "不同Token出口策略净收益对比", "净收益/(USD)")
     _plot_bar(plot_summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同Token出口策略跨时区服务时延对比", "平均时延/h")
     _plot_profit_latency_tradeoff(plot_summary, output_dir)
 
@@ -466,44 +487,47 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
 
     rh_time = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("hour")
     fig, ax1 = plt.subplots(figsize=(9, 5))
+    margin_color = PAPER_COLORS["blue"]
+    capacity_color = PAPER_COLORS["green"]
     margin_line = ax1.plot(
         rh_time["hour"],
         rh_time["power_margin_norm"],
         marker="o",
-        linewidth=2.4,
-        color="#2563eb",
+        linewidth=3.0,
+        color=margin_color,
         label="等效功率裕度",
         zorder=3,
     )
-    ax1.set_xlabel("小时")
-    ax1.set_ylabel("等效功率裕度")
-    ax1.grid(True, linestyle="--", alpha=0.3)
+    ax1.set_xlabel("小时/h")
+    ax1.set_ylabel("等效功率裕度/(p.u.)", color=margin_color)
+    ax1.tick_params(axis="y", colors=margin_color)
+    apply_paper_axes(ax1)
+    format_hour_axis(ax1)
     ax2 = ax1.twinx()
     capacity_bars = ax2.bar(
         rh_time["hour"],
         rh_time["token_capacity"],
-        color="#dc2626",
-        alpha=0.35,
+        color=capacity_color,
+        alpha=0.28,
         label="Token产出能力",
         zorder=1,
     )
-    ax2.set_ylabel("Token产出能力")
+    ax2.set_ylabel("Token产出能力/(tokens/h)", color=capacity_color)
+    ax2.tick_params(axis="y", colors=capacity_color)
     ax1.set_zorder(ax2.get_zorder() + 1)
     ax1.patch.set_visible(False)
-    ax1.legend([margin_line[0], capacity_bars], ["等效功率裕度", "Token产出能力"], loc="best")
+    ax1.legend([margin_line[0], capacity_bars], ["等效功率裕度", "Token产出能力"], loc="upper right")
     ax1.set_title("等效功率裕度与Token产出能力时序关系")
-    fig.tight_layout()
-    fig.savefig(output_dir / "power_margin_token_capacity_timeseries.png")
+    save_figure(fig, output_dir / "power_margin_token_capacity_timeseries.png")
     plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(8, 4.8))
-    ax.plot(margin_curve["power_margin_norm"], margin_curve["token_capacity"], marker="o", linewidth=2)
+    ax.plot(margin_curve["power_margin_norm"], margin_curve["token_capacity"], marker="o", linewidth=2.6, color=PAPER_COLORS["blue"])
     ax.set_title("等效功率裕度到Token产出的转换关系")
-    ax.set_xlabel("等效功率裕度")
-    ax.set_ylabel("Token产出能力")
-    ax.grid(True, linestyle="--", alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(output_dir / "power_to_token_curve.png")
+    ax.set_xlabel("等效功率裕度/(p.u.)")
+    ax.set_ylabel("Token产出能力/(tokens/h)")
+    apply_paper_axes(ax)
+    save_figure(fig, output_dir / "power_to_token_curve.png")
     plt.close(fig)
 
     rh_alloc = hourly_results[hourly_results["strategy"] == "RH-TEO"][
@@ -517,7 +541,7 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
         y_columns=["domestic_export_tokens", "europe_export_tokens", "north_america_export_tokens"],
         path=output_dir / "rh_teo_allocation_curve.png",
         title="RH-TEO策略下跨时区Token分配曲线",
-        xlabel="小时",
+        xlabel="小时/h",
         ylabel="出口Token量/百万",
         labels={"domestic_export_tokens": "国内", "europe_export_tokens": "欧洲", "north_america_export_tokens": "北美"},
     )
