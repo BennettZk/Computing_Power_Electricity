@@ -40,25 +40,41 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `hourly_input_24h.csv`
 - `chip_dvfs.csv`
 
-`outputs/nbsdc_fusion/` 保存三层融合结果：
+规范输出按类型拆分：
+
+- `outputs/data/nbsdc_fusion/`：NBSDC 三层融合 CSV 表格。
+- `outputs/data/token_export/`：Token 出口实验 CSV 表格。
+- `outputs/figures/nbsdc_fusion/`：NBSDC 三层融合 PNG/PDF 图。
+- `outputs/figures/token_export/`：Token 出口实验 PNG/PDF 图。
+- `outputs/reports/`：清洗报告和实验摘要。
+
+为兼容旧引用，运行脚本后仍会在 `outputs/nbsdc_fusion/` 和 `outputs/token_export/` 保留一份同名副本。
+
+`outputs/data/nbsdc_fusion/` 保存三层融合表格：
 
 - `aligned_hourly_fusion.csv`
 - `aligned_hourly_fusion_cn.csv`
 - `nbsdc_fusion_metrics.csv`
 - `nbsdc_fusion_metrics_cn.csv`
-- `nbsdc_fusion_summary.txt`
+- `room_task_distribution.csv`
 - `room_task_distribution_cn.csv`
+- `rack_task_distribution.csv`
 - `rack_task_distribution_cn.csv`
+- `server_task_distribution.csv`
 - `server_task_distribution_cn.csv`
+
+`outputs/figures/nbsdc_fusion/` 保存三层融合图：
+
 - `price_powercap.png`
 - `hourly_task_arrivals.png`
 - `dvfs_frequency_power.png`
 - `three_layer_power_margin.png`
-- `power_margin_old_vs_new.png`
+- `power_margin_baseline_vs_fused.png`
+- `room_hourly_task_heatmap.png`
 - `room_task_distribution.png`
 - `chip_actual_vs_cap.png`
 
-`outputs/token_export/` 保存 Token 出口实验结果：
+`outputs/data/token_export/` 保存 Token 出口实验表格：
 
 - `token_export_results.csv`
 - `token_export_results_cn.csv`
@@ -68,7 +84,9 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `region_token_export_cn.csv`
 - `token_sensitivity_results.csv`
 - `token_sensitivity_results_cn.csv`
-- `token_export_summary.txt`
+
+`outputs/figures/token_export/` 保存 Token 出口实验图：
+
 - `hourly_token_capacity.png`
 - `power_margin_token_capacity_timeseries.png`
 - `token_export_by_region.png`
@@ -76,7 +94,13 @@ python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
 - `cross_timezone_latency.png`
 - `rh_teo_allocation_curve.png`
 - `token_sensitivity.png`
-- `power_to_token_curve.png`，该图为线性转换关系，仅作为辅助检查，不建议作为核心论文图。
+- `power_to_token_curve.png`，该图仅作为辅助检查，不建议作为核心论文图。
+
+`outputs/reports/` 保存摘要和报告：
+
+- `uploaded_case_cleaning_report.txt`
+- `nbsdc_fusion_summary.txt`
+- `token_export_summary.txt`
 
 说明：`token_export_results.csv` 和 `token_export_results_cn.csv` 保留“不出口”零出口基准；主要柱状图和地区出口图已排除该基准，以突出实际发生 Token 出口的策略差异。
 

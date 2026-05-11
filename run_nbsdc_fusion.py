@@ -24,7 +24,7 @@ def main() -> None:
         print("Please run: python scripts/prepare_uploaded_case_dataset.py")
         raise SystemExit(1)
 
-    outputs = run_nbsdc_fusion(data_dir=data_dir, output_dir="outputs/nbsdc_fusion")
+    outputs = run_nbsdc_fusion(data_dir=data_dir)
     print("NBSDC fusion finished.")
     for name, path in outputs.items():
         print(f"- {name}: {path}")

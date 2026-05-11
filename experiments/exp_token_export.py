@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
+from utils.io_utils import copy_file, copy_matching_files, ensure_dir, read_csv_required, save_csv, write_text
 from utils.metrics import (
     PARAMETER_VALUE_MAPPING as PARAMETER_LABELS,
     REGION_VALUE_MAPPING as REGION_LABELS,
@@ -549,13 +549,20 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
 
 
 def run_token_export(
-    fusion_path: str | Path = "outputs/nbsdc_fusion/aligned_hourly_fusion.csv",
+    fusion_path: str | Path = "outputs/data/nbsdc_fusion/aligned_hourly_fusion.csv",
     config: dict | None = None,
-    output_dir: str | Path = "outputs/token_export",
+    output_dir: str | Path | None = None,
+    data_output_dir: str | Path = "outputs/data/token_export",
+    figure_output_dir: str | Path = "outputs/figures/token_export",
+    report_output_dir: str | Path = "outputs/reports",
+    compat_output_dir: str | Path | None = "outputs/token_export",
 ) -> dict[str, Path]:
     if config is None:
         raise ValueError("config is required")
-    output_dir = ensure_dir(output_dir)
+    data_output_dir = ensure_dir(data_output_dir)
+    figure_output_dir = ensure_dir(figure_output_dir)
+    report_output_dir = ensure_dir(report_output_dir)
+    compat_dir = ensure_dir(output_dir or compat_output_dir) if (output_dir or compat_output_dir) else None
     fusion = read_csv_required(fusion_path, ["hour", "price", "power_margin_norm"])
     hourly = fusion[["hour", "price", "power_margin_norm"]].copy()
     hourly["token_capacity"] = _token_capacity(hourly, config)
@@ -564,21 +571,21 @@ def run_token_export(
     hourly_results = hourly_results.merge(hourly[["hour", "price", "power_margin_norm"]], on="hour", how="left")
     sensitivity = _run_sensitivity(hourly, config)
 
-    results_path = save_csv(summary, output_dir / "token_export_results.csv")
+    results_path = save_csv(summary, data_output_dir / "token_export_results.csv")
     summary_cn = localize_strategy_values(add_strategy_remark(summary))
-    export_csv_chinese(summary_cn, output_dir / "token_export_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
-    hourly_path = save_csv(hourly_results, output_dir / "hourly_token_export.csv")
+    export_csv_chinese(summary_cn, data_output_dir / "token_export_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    hourly_path = save_csv(hourly_results, data_output_dir / "hourly_token_export.csv")
     hourly_cn = localize_strategy_values(hourly_results)
-    export_csv_chinese(hourly_cn, output_dir / "hourly_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
-    region_path = save_csv(region_results, output_dir / "region_token_export.csv")
+    export_csv_chinese(hourly_cn, data_output_dir / "hourly_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    region_path = save_csv(region_results, data_output_dir / "region_token_export.csv")
     region_cn = add_strategy_remark(region_results)
     region_cn = localize_strategy_values(region_cn)
     region_cn = localize_region_values(region_cn)
-    export_csv_chinese(region_cn, output_dir / "region_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
-    sensitivity_path = save_csv(sensitivity, output_dir / "token_sensitivity_results.csv")
+    export_csv_chinese(region_cn, data_output_dir / "region_token_export_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    sensitivity_path = save_csv(sensitivity, data_output_dir / "token_sensitivity_results.csv")
     sensitivity_cn = localize_parameter_values(sensitivity)
-    export_csv_chinese(sensitivity_cn, output_dir / "token_sensitivity_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
-    _plot_outputs(summary, hourly_results, region_results, sensitivity, output_dir)
+    export_csv_chinese(sensitivity_cn, data_output_dir / "token_sensitivity_results_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    _plot_outputs(summary, hourly_results, region_results, sensitivity, figure_output_dir)
 
     best = summary.sort_values("net_token_profit", ascending=False).iloc[0]
     best_strategy_label = STRATEGY_LABELS.get(str(best["strategy"]), str(best["strategy"]))
@@ -601,15 +608,20 @@ def run_token_export(
         "",
         "生成图表: hourly_token_capacity, token_export_by_region, token_profit_comparison, cross_timezone_latency, token_profit_latency_tradeoff, power_margin_token_capacity_timeseries, power_to_token_curve, rh_teo_allocation_curve, token_sensitivity。",
     ]
-    summary_path = write_text(output_dir / "token_export_summary.txt", summary_lines)
+    summary_path = write_text(report_output_dir / "token_export_summary.txt", summary_lines)
+
+    if compat_dir:
+        copy_matching_files(data_output_dir, compat_dir, [".csv"])
+        copy_matching_files(figure_output_dir, compat_dir, [".png", ".pdf"])
+        copy_file(summary_path, compat_dir / summary_path.name)
 
     return {
         "token_export_results": results_path,
         "hourly_token_export": hourly_path,
         "region_token_export": region_path,
         "token_sensitivity_results": sensitivity_path,
-        "hourly_token_export_cn": output_dir / "hourly_token_export_cn.csv",
-        "region_token_export_cn": output_dir / "region_token_export_cn.csv",
-        "token_sensitivity_results_cn": output_dir / "token_sensitivity_results_cn.csv",
+        "hourly_token_export_cn": data_output_dir / "hourly_token_export_cn.csv",
+        "region_token_export_cn": data_output_dir / "region_token_export_cn.csv",
+        "token_sensitivity_results_cn": data_output_dir / "token_sensitivity_results_cn.csv",
         "summary": summary_path,
     }

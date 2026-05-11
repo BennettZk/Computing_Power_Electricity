@@ -2,39 +2,39 @@
 
 ## 优先使用图
 
-说明：以下图均已输出同名 `.png` 和 `.pdf`，原文件保存在对应结果目录，并同步保存到 `outputs/figures_final/`。
+说明：以下图均已输出同名 `.png` 和 `.pdf`，规范图目录为 `outputs/figures/...`；旧的 `outputs/nbsdc_fusion/`、`outputs/token_export/` 仍保留兼容副本。
 
-1. 【核心图】电价与功率上限关系：`outputs/nbsdc_fusion/price_powercap.png`
-2. 【核心图】服务器级 24 小时任务到达量：`outputs/nbsdc_fusion/hourly_task_arrivals.png`
-3. 【核心图】DVFS 频率与实际功率关系：`outputs/nbsdc_fusion/dvfs_frequency_power.png`
-4. 【核心图】三层数据融合下的等效功率裕度：`outputs/nbsdc_fusion/three_layer_power_margin.png`
-5. 【核心图】基准裕度与三层融合裕度对比：`outputs/nbsdc_fusion/power_margin_baseline_vs_fused.png`
-6. 【核心图】不同机房小时级任务分布热力图：`outputs/nbsdc_fusion/room_hourly_task_heatmap.png`
-7. 【辅助图】等效功率裕度与 Token 产出能力时序关系：`outputs/token_export/power_margin_token_capacity_timeseries.png`。该图用于展示等效功率裕度到 Token 产出能力的映射关系，属于模型关系说明图，不作为核心策略优劣对比图。
-8. 【核心图】Token 出口策略收益与时延权衡对比：`outputs/token_export/token_profit_latency_tradeoff.png`
-9. 【核心图】不同 Token 出口策略净收益对比：`outputs/token_export/token_profit_comparison.png`
-10. 【核心图】不同地区 Token 出口量对比：`outputs/token_export/token_export_by_region.png`
-11. 【核心图】Token 出口关键参数敏感性分析：`outputs/token_export/token_sensitivity.png`
+1. 【核心图】电价与功率上限关系：`outputs/figures/nbsdc_fusion/price_powercap.png`
+2. 【核心图】服务器级 24 小时任务到达量：`outputs/figures/nbsdc_fusion/hourly_task_arrivals.png`
+3. 【核心图】DVFS 频率下实际功率分布：`outputs/figures/nbsdc_fusion/dvfs_frequency_power.png`。图注说明：箱线与抖动点用于呈现同一频率档位的功率分布，反映 DVFS 档位与实际功率的相关关系。
+4. 【核心图】三层数据融合下的等效功率裕度：`outputs/figures/nbsdc_fusion/three_layer_power_margin.png`
+5. 【核心图】基准裕度与三层融合裕度对比：`outputs/figures/nbsdc_fusion/power_margin_baseline_vs_fused.png`
+6. 【核心图】不同机房小时级任务分布热力图：`outputs/figures/nbsdc_fusion/room_hourly_task_heatmap.png`
+7. 【辅助图】等效功率裕度与 Token 产出能力时序关系：`outputs/figures/token_export/power_margin_token_capacity_timeseries.png`。该图用于展示等效功率裕度到 Token 产出能力的映射关系，属于模型关系说明图，不作为核心策略优劣对比图。
+8. 【核心图】Token 出口策略收益与时延权衡对比：`outputs/figures/token_export/token_profit_latency_tradeoff.png`
+9. 【核心图】不同 Token 出口策略净收益对比：`outputs/figures/token_export/token_profit_comparison.png`
+10. 【核心图】不同地区 Token 出口量对比：`outputs/figures/token_export/token_export_by_region.png`
+11. 【核心图】Token 出口关键参数敏感性分析：`outputs/figures/token_export/token_sensitivity.png`
 
 ## 辅助图
 
-- 【辅助图】不同 Token 出口策略跨时区服务时延对比：`outputs/token_export/cross_timezone_latency.png`
-- 【辅助图】小时级 Token 产出能力：`outputs/token_export/hourly_token_capacity.png`
-- 【辅助图】RH-TEO 策略下跨时区 Token 分配曲线：`outputs/token_export/rh_teo_allocation_curve.png`
-- 【辅助图】芯片实际功率与功率上限对比：`outputs/nbsdc_fusion/chip_actual_vs_cap.png`
-- 【辅助图】不同机房任务总量分布：`outputs/nbsdc_fusion/room_task_distribution.png`
-- 【辅助图】等效功率裕度到 Token 产出的转换关系：`outputs/token_export/power_to_token_curve.png`。该图天然近似线性，只建议作为模型关系说明，不建议作为核心实验图。
+- 【辅助图】不同 Token 出口策略跨时区服务时延对比：`outputs/figures/token_export/cross_timezone_latency.png`
+- 【辅助图】小时级 Token 产出能力：`outputs/figures/token_export/hourly_token_capacity.png`
+- 【辅助图】RH-TEO 策略下跨时区 Token 分配曲线：`outputs/figures/token_export/rh_teo_allocation_curve.png`
+- 【辅助图】芯片实际功率与功率上限对比：`outputs/figures/nbsdc_fusion/chip_actual_vs_cap.png`
+- 【辅助图】不同机房任务总量分布：`outputs/figures/nbsdc_fusion/room_task_distribution.png`
+- 【辅助图】等效功率裕度到 Token 产出的转换关系：`outputs/figures/token_export/power_to_token_curve.png`。该图只建议作为模型关系说明，不建议作为核心实验图。
 
 ## 表
 
 - 三个 NBSDC 数据集字段用途说明：README 数据集使用方式表。
-- 三层融合小时级指标：`outputs/nbsdc_fusion/aligned_hourly_fusion.csv`
-- 三层融合指标摘要：`outputs/nbsdc_fusion/nbsdc_fusion_metrics.csv`
-- 机房任务分布：`outputs/nbsdc_fusion/room_task_distribution.csv`
+- 三层融合小时级指标：`outputs/data/nbsdc_fusion/aligned_hourly_fusion.csv`
+- 三层融合指标摘要：`outputs/data/nbsdc_fusion/nbsdc_fusion_metrics.csv`
+- 机房任务分布：`outputs/data/nbsdc_fusion/room_task_distribution.csv`
 - Token 出口区域配置：`config/token_export.yaml`
-- Token 出口策略对比结果：`outputs/token_export/token_export_results.csv`
-- Token 出口策略对比中文展示版：`outputs/token_export/token_export_results_cn.csv`，包含“不出口”零出口基准。
-- 参数敏感性结果：`outputs/token_export/token_sensitivity_results.csv`
+- Token 出口策略对比结果：`outputs/data/token_export/token_export_results.csv`
+- Token 出口策略对比中文展示版：`outputs/data/token_export/token_export_results_cn.csv`，包含“不出口”零出口基准。
+- 参数敏感性结果：`outputs/data/token_export/token_sensitivity_results.csv`
 
 说明：主要图表已排除“不出口”基准，以突出实际发生 Token 出口的策略之间的差异；“不出口”仅保留在结果表中用于对照。
 

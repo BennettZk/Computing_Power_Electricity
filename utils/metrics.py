@@ -121,7 +121,7 @@ def add_strategy_remark(df: pd.DataFrame, column: str = "strategy") -> pd.DataFr
     return output
 
 
-def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[str, str] | None = None) -> None:
+def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[str, str] | None = None) -> Path:
     """
     Copy a DataFrame, rename known English columns to Chinese, and export it.
 
@@ -134,6 +134,7 @@ def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[
     export_df = df.copy()
     export_df = export_df.rename(columns={col: mapping[col] for col in export_df.columns if col in mapping})
     export_df.to_csv(output_path, index=False, encoding="utf-8-sig")
+    return output_path
 
 
 def safe_divide(numerator: float, denominator: float) -> float:

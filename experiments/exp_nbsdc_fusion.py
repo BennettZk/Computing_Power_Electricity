@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from utils.io_utils import ensure_dir, read_csv_required, save_csv, write_text
+from utils.io_utils import copy_file, copy_matching_files, ensure_dir, read_csv_required, save_csv, write_text
 from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese, normalize_by_max, normalize_minmax
 from utils.plotting import (
     PAPER_COLORS,
@@ -15,7 +15,6 @@ from utils.plotting import (
     save_figure,
     save_line_plot,
     save_multi_line_plot,
-    save_scatter_plot,
     setup_chinese_matplotlib,
 )
 
@@ -182,6 +181,124 @@ def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> Non
     )
 
 
+def _plot_dvfs_frequency_power(chip_df: pd.DataFrame, output_dir: Path) -> None:
+    setup_chinese_matplotlib()
+    import matplotlib.pyplot as plt
+
+    plot_df = chip_df[["frequency_ghz", "actual_power_w"]].copy()
+    plot_df["frequency_ghz"] = pd.to_numeric(plot_df["frequency_ghz"], errors="coerce")
+    plot_df["actual_power_w"] = pd.to_numeric(plot_df["actual_power_w"], errors="coerce")
+    plot_df = plot_df.dropna().sort_values("frequency_ghz")
+    output_path = output_dir / "dvfs_frequency_power.png"
+
+    if plot_df.empty:
+        fig, ax = plt.subplots(figsize=(7.5, 5))
+        ax.set_title("DVFS频率与实际功率散点关系")
+        ax.set_xlabel("频率/GHz")
+        ax.set_ylabel("实际功率/W")
+        apply_paper_axes(ax)
+        save_figure(fig, output_path)
+        plt.close(fig)
+        return
+
+    grouped = [(freq, group["actual_power_w"].to_numpy()) for freq, group in plot_df.groupby("frequency_ghz", sort=True)]
+    has_repeated_frequency = len(grouped) > 1 and all(len(values) > 1 for _, values in grouped)
+    caption_text = "图中展示 DVFS 频率档位与实际功率响应的相关关系。"
+
+    if has_repeated_frequency:
+        fig, ax = plt.subplots(figsize=(8.2, 5.2))
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+
+        positions = [float(freq) for freq, _ in grouped]
+        values = [power for _, power in grouped]
+        min_gap = np.diff(sorted(positions)).min() if len(positions) > 1 else 0.1
+        box_width = min(0.08, max(0.035, float(min_gap) * 0.42))
+        box = ax.boxplot(
+            values,
+            positions=positions,
+            widths=box_width,
+            patch_artist=True,
+            showfliers=False,
+            medianprops={"color": PAPER_COLORS["red"], "linewidth": 2.3},
+            boxprops={"edgecolor": PAPER_COLORS["blue"], "linewidth": 1.4},
+            whiskerprops={"color": PAPER_COLORS["blue"], "linewidth": 1.2},
+            capprops={"color": PAPER_COLORS["blue"], "linewidth": 1.2},
+        )
+        for patch in box["boxes"]:
+            patch.set_facecolor("#bfdbfe")
+            patch.set_alpha(0.55)
+
+        jitter_rng = np.random.default_rng(42)
+        max_points = 2200
+        sample_df = plot_df.sample(n=min(len(plot_df), max_points), random_state=42) if len(plot_df) > max_points else plot_df
+        jitter_width = box_width * 0.32
+        jittered_x = sample_df["frequency_ghz"].to_numpy() + jitter_rng.uniform(-jitter_width, jitter_width, size=len(sample_df))
+        ax.scatter(
+            jittered_x,
+            sample_df["actual_power_w"],
+            s=12,
+            color=PAPER_COLORS["gray"],
+            alpha=0.32,
+            edgecolors="none",
+            zorder=3,
+        )
+
+        medians = [float(np.median(power)) for power in values]
+        ax.scatter(positions, medians, marker="D", s=58, color=PAPER_COLORS["green"], edgecolors="white", linewidths=0.8, zorder=4)
+        sample_label = f"抖动样本点（抽样 n={len(sample_df)}）" if len(sample_df) < len(plot_df) else f"抖动样本点（n={len(sample_df)}）"
+        handles = [
+            Patch(facecolor="#bfdbfe", edgecolor=PAPER_COLORS["blue"], alpha=0.55, label="功率分布箱线"),
+            Line2D([0], [0], marker="o", color="none", markerfacecolor=PAPER_COLORS["gray"], markeredgecolor="none", alpha=0.45, label=sample_label),
+            Line2D([0], [0], marker="D", color="none", markerfacecolor=PAPER_COLORS["green"], markeredgecolor="white", label="档位中位数"),
+        ]
+        ax.set_title("DVFS频率下实际功率分布")
+        ax.legend(handles=handles, loc="upper left")
+        caption_text = "箱线与抖动点展示同一频率档位下实际功率分布，用于说明 DVFS 档位与芯片功率响应的相关关系。"
+    else:
+        fig, ax = plt.subplots(figsize=(7.8, 5.2))
+        ax.scatter(plot_df["frequency_ghz"], plot_df["actual_power_w"], s=22, color=PAPER_COLORS["blue"], alpha=0.55, edgecolors="none", label="样本点")
+        r = float(np.corrcoef(plot_df["frequency_ghz"], plot_df["actual_power_w"])[0, 1]) if len(plot_df) >= 2 else float("nan")
+        if len(plot_df) >= 2 and plot_df["frequency_ghz"].nunique() >= 2:
+            slope, intercept = np.polyfit(plot_df["frequency_ghz"], plot_df["actual_power_w"], 1)
+            x_line = np.linspace(float(plot_df["frequency_ghz"].min()), float(plot_df["frequency_ghz"].max()), 100)
+            ax.plot(x_line, slope * x_line + intercept, linewidth=2.2, color=PAPER_COLORS["orange"], label="一阶趋势线")
+        r_label = f"Pearson r = {r:.3f}" if np.isfinite(r) else "Pearson r = N/A"
+        ax.text(
+            0.03,
+            0.95,
+            r_label,
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontsize=10.5,
+            color="#374151",
+        )
+        ax.set_title("DVFS频率与实际功率散点关系")
+        ax.legend(loc="upper left")
+        caption_text = "散点、一阶趋势线与 Pearson r 用于辅助观察 DVFS 频率与实际功率的相关关系。"
+
+    ax.set_xlabel("频率/GHz")
+    ax.set_ylabel("实际功率/W")
+    ax.set_xticks([float(freq) for freq, _ in grouped])
+    ax.set_xticklabels([f"{float(freq):.1f}" for freq, _ in grouped])
+    if grouped:
+        positions = [float(freq) for freq, _ in grouped]
+        ax.set_xlim(min(positions) - 0.12, max(positions) + 0.12)
+    apply_paper_axes(ax)
+    fig.text(
+        0.5,
+        0.01,
+        caption_text,
+        ha="center",
+        fontsize=9.5,
+        color="#374151",
+    )
+    fig.subplots_adjust(bottom=0.16)
+    save_figure(fig, output_path)
+    plt.close(fig)
+
+
 def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) -> None:
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
@@ -220,13 +337,20 @@ def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) ->
 
 def run_nbsdc_fusion(
     data_dir: str | Path = "data/real_case",
-    output_dir: str | Path = "outputs/nbsdc_fusion",
+    output_dir: str | Path | None = None,
+    data_output_dir: str | Path = "outputs/data/nbsdc_fusion",
+    figure_output_dir: str | Path = "outputs/figures/nbsdc_fusion",
+    report_output_dir: str | Path = "outputs/reports",
+    compat_output_dir: str | Path | None = "outputs/nbsdc_fusion",
     alpha: float = 0.55,
     beta: float = 0.25,
     base_reserve: float = 0.10,
 ) -> dict[str, Path]:
     data_dir = Path(data_dir)
-    output_dir = ensure_dir(output_dir)
+    data_output_dir = ensure_dir(data_output_dir)
+    figure_output_dir = ensure_dir(figure_output_dir)
+    report_output_dir = ensure_dir(report_output_dir)
+    compat_dir = ensure_dir(output_dir or compat_output_dir) if (output_dir or compat_output_dir) else None
 
     cluster = read_csv_required(data_dir / "cluster_power_price_5min.csv", ["time_step", "power_cap_pu", "price"])
     server_raw = read_csv_required(data_dir / "server_tasks_5min_raw_mapped.csv", ["task_id", "arrival_time", "cpu_demand"])
@@ -237,7 +361,7 @@ def run_nbsdc_fusion(
     cluster_hourly = _cluster_hourly(cluster)
     server_hourly = _server_hourly(server_24h)
     chip_hourly = _chip_hourly(chip)
-    distributions = _save_distribution_tables(server_24h, output_dir)
+    distributions = _save_distribution_tables(server_24h, data_output_dir)
 
     aligned = (
         _hours()
@@ -270,8 +394,8 @@ def run_nbsdc_fusion(
     aligned["beta"] = float(beta)
     aligned["base_reserve"] = float(base_reserve)
 
-    aligned_path = save_csv(aligned, output_dir / "aligned_hourly_fusion.csv")
-    export_csv_chinese(aligned, output_dir / "aligned_hourly_fusion_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    aligned_path = save_csv(aligned, data_output_dir / "aligned_hourly_fusion.csv")
+    export_csv_chinese(aligned, data_output_dir / "aligned_hourly_fusion_cn.csv", RESULT_CSV_COLUMN_MAPPING)
     metrics_cols = [
         "hour",
         "price",
@@ -297,34 +421,25 @@ def run_nbsdc_fusion(
         "power_margin_norm",
     ]
     metrics_df = aligned[metrics_cols]
-    metrics_path = save_csv(metrics_df, output_dir / "nbsdc_fusion_metrics.csv")
-    export_csv_chinese(metrics_df, output_dir / "nbsdc_fusion_metrics_cn.csv", RESULT_CSV_COLUMN_MAPPING)
+    metrics_path = save_csv(metrics_df, data_output_dir / "nbsdc_fusion_metrics.csv")
+    export_csv_chinese(metrics_df, data_output_dir / "nbsdc_fusion_metrics_cn.csv", RESULT_CSV_COLUMN_MAPPING)
 
-    _plot_price_powercap(aligned, output_dir)
+    _plot_price_powercap(aligned, figure_output_dir)
     save_line_plot(
         aligned,
         x="hour",
         y="hourly_task_arrivals",
-        path=output_dir / "hourly_task_arrivals.png",
+        path=figure_output_dir / "hourly_task_arrivals.png",
         title="服务器级24小时任务到达量",
         xlabel="小时/h",
         ylabel="任务到达量/个",
     )
-    chip_scatter = _derive_chip_hour(chip).sample(n=min(len(chip), 3000), random_state=42) if len(chip) else chip
-    save_scatter_plot(
-        chip_scatter,
-        x="frequency_ghz",
-        y="actual_power_w",
-        path=output_dir / "dvfs_frequency_power.png",
-        title="DVFS频率与实际功率关系",
-        xlabel="频率/GHz",
-        ylabel="实际功率/W",
-    )
+    _plot_dvfs_frequency_power(chip, figure_output_dir)
     save_multi_line_plot(
         aligned,
         x="hour",
         y_columns=["cluster_cap_norm", "server_load_norm", "chip_power_variation_norm", "power_margin_norm"],
-        path=output_dir / "three_layer_power_margin.png",
+        path=figure_output_dir / "three_layer_power_margin.png",
         title="三层数据融合下的等效功率裕度",
         xlabel="小时/h",
         ylabel="归一化值",
@@ -339,29 +454,33 @@ def run_nbsdc_fusion(
         aligned,
         x="hour",
         y_columns=["power_margin_norm_old", "power_margin_norm"],
-        path=output_dir / "power_margin_baseline_vs_fused.png",
+        path=figure_output_dir / "power_margin_baseline_vs_fused.png",
         title="基准裕度与三层融合裕度对比",
         xlabel="小时/h",
         ylabel="等效功率裕度",
         labels={"power_margin_norm_old": "基准裕度", "power_margin_norm": "三层融合裕度"},
     )
-    stale_old_plot = output_dir / "power_margin_old_vs_new.png"
+    stale_old_plot = figure_output_dir / "power_margin_old_vs_new.png"
     if stale_old_plot.exists():
         stale_old_plot.unlink()
+    if compat_dir:
+        compat_stale_old_plot = compat_dir / "power_margin_old_vs_new.png"
+        if compat_stale_old_plot.exists():
+            compat_stale_old_plot.unlink()
 
-    _plot_room_hourly_task_heatmap(server_24h, output_dir)
+    _plot_room_hourly_task_heatmap(server_24h, figure_output_dir)
     room_top = distributions["room"].head(12).copy()
     save_bar_plot(
         room_top,
         x="server_room_id",
         y="task_count",
-        path=output_dir / "room_task_distribution.png",
+        path=figure_output_dir / "room_task_distribution.png",
         title="不同机房任务总量分布（辅助）",
         xlabel="机房",
         ylabel="任务数量/个",
         rotation=30,
     )
-    _plot_chip_actual_vs_cap(chip_hourly, output_dir)
+    _plot_chip_actual_vs_cap(chip_hourly, figure_output_dir)
 
     summary_lines = [
         "NBSDC三层数据融合摘要",
@@ -385,7 +504,12 @@ def run_nbsdc_fusion(
         "等效功率裕度由集群功率上限、服务器负载和芯片功率响应三层指标融合得到。",
         "由于芯片实际功率存在较高基础功耗，本文采用 min-max 归一化刻画芯片功率的相对波动，避免最大值归一化导致曲线过平。",
     ]
-    summary_path = write_text(output_dir / "nbsdc_fusion_summary.txt", summary_lines)
+    summary_path = write_text(report_output_dir / "nbsdc_fusion_summary.txt", summary_lines)
+
+    if compat_dir:
+        copy_matching_files(data_output_dir, compat_dir, [".csv"])
+        copy_matching_files(figure_output_dir, compat_dir, [".png", ".pdf"])
+        copy_file(summary_path, compat_dir / summary_path.name)
 
     return {
         "aligned_hourly_fusion": aligned_path,
