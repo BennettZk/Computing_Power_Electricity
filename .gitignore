@@ -1,13 +1,21 @@
 .venv/
 .idea/
+__pycache__/
+*.py[cod]
 
-outputs/
 results.csv
 summary.txt
+
+# Keep the outputs directory but do not track its contents.
+outputs/*
+!outputs/.gitkeep
 
 # Keep the data directory but do not track its contents.
 data/*
 !data/.gitkeep
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
 #
 # Images
 *.png
