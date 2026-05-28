@@ -1,7 +1,0 @@
-{
-  "scenario_name": "default_tou",
-  "processed_profile_path": "data/processed/hourly_profile.csv",
-  "legacy_profile_path": "data/hourly_input.csv",
-  "high_price_quantile": 0.7,
-  "low_price_quantile": 0.3
-}

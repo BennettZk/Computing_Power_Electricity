@@ -1,0 +1,38 @@
+{
+  "time": {
+    "hours": 24,
+    "slot_hours": 1.0
+  },
+  "constraints": {
+    "max_avg_delay_hours": 2.0,
+    "max_sla_violation_rate": 0.12,
+    "power_limit_kw": 25.0,
+    "peak_reduction_ratio": 0.8,
+    "peak_hours": [8, 9, 10, 11, 16, 17, 18, 19],
+    "max_delay_slots_tolerant": 4,
+    "max_delay_slots_token": 6,
+    "infeasible_penalty": 1000000.0
+  },
+  "power": {
+    "fixed_power_kw": 1.1,
+    "cooling_base_coeff": 0.12,
+    "renewable_credit_factor": 0.15,
+    "carbon_cost_per_kg": 0.0
+  },
+  "task_defaults": {
+    "token_energy_scale": 1000000.0,
+    "high_priority": 3,
+    "medium_priority": 2,
+    "low_priority": 1
+  },
+  "migration": {
+    "enable_spatial_migration": true,
+    "max_migration_ratio": 0.55,
+    "remote_capacity_cpu": 20.0,
+    "remote_capacity_gpu": 14.0,
+    "migration_delay_hours": 0.05,
+    "migration_cost_per_task": 0.03,
+    "network_energy_kwh_per_task": 0.005,
+    "high_price_only": true
+  }
+}

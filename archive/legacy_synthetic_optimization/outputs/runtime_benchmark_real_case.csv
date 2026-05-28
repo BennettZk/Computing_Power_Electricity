@@ -1,8 +1,0 @@
-﻿数据路径/规模,任务数量,CSV大小/MB,模式,步骤名称,耗时/s,重复编号
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,data_loading,0.28288299997802824,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,build_fcfs_schedule,0.09031439991667867,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,simulate_fcfs,0.7678789000492543,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,build_price_only_schedule,0.07893550000153482,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,simulate_price_only,0.7524695999454707,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,build_quick_proposed_simplified_schedule,0.0011685999343171716,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks.csv,51321,3.1821107864379883,quick,simulate_quick_proposed_simplified,0.8389323999872431,1

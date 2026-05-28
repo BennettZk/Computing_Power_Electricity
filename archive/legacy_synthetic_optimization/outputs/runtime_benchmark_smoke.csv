@@ -1,8 +1,0 @@
-﻿数据路径/规模,任务数量,CSV大小/MB,模式,步骤名称,耗时/s,重复编号
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,data_loading,0.005842900020070374,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_fcfs_schedule,0.00404309993609786,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_fcfs,0.004278299980796874,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_price_only_schedule,0.004941100021824241,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_price_only,0.003608900005929172,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,build_quick_proposed_simplified_schedule,0.0006211000727489591,1
-E:\Coding\redo\dc_token_opt\data\synthetic\tasks_smoke.csv,120,0.008709907531738281,quick,simulate_quick_proposed_simplified,0.003280700067989528,1

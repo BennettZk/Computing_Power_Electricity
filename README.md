@@ -1,18 +1,98 @@
-# 异构资源环境下数据中心算电协同调度优化研究
+# 基于 NBSDC 多层数据融合的算电协同调度与 Token 出口优化
 
-当前项目主线为：**基于 NBSDC 多层级数据融合的算电协同调度与 Token 出口优化研究**。
+本项目以 NBSDC 的三类原始调度数据为输入，完成从数据清洗、三层数据融合到 Token 出口优化实验的完整流程。当前主线是：
 
-项目综合利用 NBSDC 的集群级功率封顶数据、服务器级任务调度数据和芯片级 DVFS 数据，构建“电力约束-任务负载-设备功率响应”的三层融合模型。在此基础上，将等效功率裕度折算为 AI 推理 Token 产出能力，并实现基于滚动时域的跨时区 Token 出口优化策略 RH-TEO，用于分析电力成本、Token 收益、服务价格和跨时区时延之间的权衡关系。
+1. 使用集群级、服务器级、芯片级数据构建小时级融合指标。
+2. 计算等效功率裕度 `power_margin_norm`。
+3. 将功率裕度折算为 Token 产出能力。
+4. 使用 RH-TEO 滚动时域策略进行跨时区 Token 出口分配。
 
-## 数据集使用方式
+## 快速运行
 
-| 数据文件 | 使用层级 | 主要字段 | 在项目中的作用 |
-| --- | --- | --- | --- |
-| `data/raw/数据中心集群级别的调度数据.xlsx` | 集群级 | 电价、功率上限、奖励值 | 构建分时电价、Power Capping 和集群功率约束 |
-| `data/raw/服务器级别的调度数据.xlsx` | 服务器级 | 任务到达、CPU 需求、deadline、机房/机架/服务器分布 | 构建 24 小时任务负载、层级负载分布和 deadline 违约统计 |
-| `data/raw/芯片级别的调度数据.xlsx` | 芯片级 | DVFS 频率、实际功率、报量功率、芯片功率上限 | 构建设备功率响应与 DVFS 跟踪误差 |
+把三份原始 Excel 文件放到 `data/raw/` 下，然后在项目根目录运行：
 
-## 运行流程
+```powershell
+.\.venv\Scripts\python.exe main.py
+```
+
+如果已经激活虚拟环境，也可以运行：
+
+```powershell
+python main.py
+```
+
+`main.py` 会自动完成：
+
+- 识别 `data/raw/` 下的集群级、服务器级、芯片级 Excel 文件
+- 清洗并生成 `data/real_case/` 中间 CSV
+- 运行 NBSDC 三层融合实验
+- 运行 Token 出口优化实验
+- 将结果写入 `outputs/`
+
+可选参数：
+
+```powershell
+python main.py --arrival-time-mode auto
+python main.py --arrival-time-mode rescale_24h
+python main.py --arrival-time-mode raw_step
+python main.py --raw-dir data/raw
+```
+
+默认 `auto` 会根据服务器任务的 `arrival_step` 范围和小时分布自动选择映射方式。
+
+## 输入数据
+
+`data/raw/` 是唯一需要手动放入数据的目录。建议保留原始中文文件名，也可以使用包含以下关键词的英文文件名：
+
+| 数据层级 | 识别关键词 | 主要用途 |
+| --- | --- | --- |
+| 集群级 | `cluster`、`datacenter`、`data_center`、`数据中心`、`集群` | 电价、功率上限、Power Capping 场景 |
+| 服务器级 | `server`、`服务器` | 任务到达、CPU 需求、deadline、机房/机架/服务器分布 |
+| 芯片级 | `chip`、`dvfs`、`芯片` | DVFS 频率、实际功率、报量功率、芯片功率上限 |
+
+如果文件名无法判断，程序会根据工作表名称辅助识别服务器级和芯片级文件。
+
+## 输出目录
+
+运行结果会生成在以下目录：
+
+| 目录 | 内容 |
+| --- | --- |
+| `data/real_case/` | 清洗后的程序输入 CSV |
+| `outputs/data/nbsdc_fusion/` | NBSDC 三层融合 CSV |
+| `outputs/data/token_export/` | Token 出口优化 CSV |
+| `outputs/figures/nbsdc_fusion/` | NBSDC 融合图表 |
+| `outputs/figures/token_export/` | Token 出口优化图表 |
+| `outputs/figures_final/` | 论文整理用图表副本 |
+| `outputs/reports/` | 清洗报告和实验摘要 |
+| `outputs/nbsdc_fusion/`、`outputs/token_export/` | 兼容旧路径的结果副本 |
+
+重要输出文件包括：
+
+- `outputs/data/nbsdc_fusion/aligned_hourly_fusion.csv`
+- `outputs/data/nbsdc_fusion/nbsdc_fusion_metrics.csv`
+- `outputs/data/token_export/token_export_results.csv`
+- `outputs/data/token_export/hourly_token_export.csv`
+- `outputs/data/token_export/token_sensitivity_results.csv`
+- `outputs/reports/uploaded_case_cleaning_report.txt`
+- `outputs/reports/nbsdc_fusion_summary.txt`
+- `outputs/reports/token_export_summary.txt`
+
+## Git 提交策略
+
+`data/` 和 `outputs/` 中的数据、图表、报告都是本地运行产物，默认不上传。仓库只保留目录占位文件：
+
+- `data/.gitkeep`
+- `data/raw/.gitkeep`
+- `outputs/.gitkeep`
+- `legacy_workflows/legacy_synthetic_optimization/data/.gitkeep`
+- `legacy_workflows/legacy_synthetic_optimization/outputs/.gitkeep`
+
+因此，提交代码时不需要提交原始数据和运行结果。新的原始 Excel 放入 `data/raw/` 后可以直接运行 `main.py` 复现结果；旧流程生成的结果也只保留在本地归档输出目录中。
+
+## 旧入口
+
+以下脚本仍保留用于分步调试：
 
 ```powershell
 python scripts/prepare_uploaded_case_dataset.py
@@ -20,102 +100,36 @@ python run_nbsdc_fusion.py
 python run_token_export.py
 ```
 
-清洗脚本支持服务器任务时间映射模式：
+日常使用建议直接运行 `main.py`。
+
+旧版 synthetic 优化方法保留在 `legacy_workflows/legacy_synthetic_optimization/`。如果需要单独运行旧方法，请使用独立入口：
 
 ```powershell
-python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode auto
-python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode rescale_24h
-python scripts/prepare_uploaded_case_dataset.py --arrival-time-mode raw_step
+python legacy_main.py
 ```
 
-默认 `auto` 会检查 `arrival_step` 范围和任务小时分布；当原始步长不足 288 或任务集中在少数小时内时，自动采用 `rescale_24h` 把任务映射到 0-23 小时。
+可选旧流程：
 
-## 输出目录
+```powershell
+python legacy_main.py --list
+python legacy_main.py --mode synthetic
+python legacy_main.py --mode nsga2
+python legacy_main.py --mode real-quick --scenario 5k
+python legacy_main.py --mode real-stress
+```
 
-`data/real_case/` 保存清洗后的程序输入 CSV：
+旧方法的输入、配置和输出都位于 `legacy_workflows/legacy_synthetic_optimization/` 内，不影响当前 `main.py` 主流程。旧流程主要用于追溯早期 CPU/GPU 异构资源调度实验，包括合成任务生成、FCFS/Price-Only/Homogeneous/GA/PSO/NSGA-II/Proposed 策略对比、消融实验、滚动实验、敏感性分析，以及真实缩放场景 quick/stress 测试。它用于对照和历史复查，不作为当前 NBSDC 三层融合与 Token 出口优化的主线入口。
 
-- `cluster_power_price_5min.csv`
-- `server_tasks_5min_raw_mapped.csv`
-- `server_tasks_24h.csv`
-- `hourly_input_24h.csv`
-- `chip_dvfs.csv`
+## 模型说明
 
-规范输出按类型拆分：
+三层融合模型将集群级功率约束、服务器级任务负载、芯片级功率响应统一到小时尺度，构造以下指标：
 
-- `outputs/data/nbsdc_fusion/`：NBSDC 三层融合 CSV 表格。
-- `outputs/data/token_export/`：Token 出口实验 CSV 表格。
-- `outputs/figures/nbsdc_fusion/`：NBSDC 三层融合 PNG/PDF 图。
-- `outputs/figures/token_export/`：Token 出口实验 PNG/PDF 图。
-- `outputs/reports/`：清洗报告和实验摘要。
+- `cluster_cap_norm`：集群功率上限归一化值
+- `server_load_norm`：服务器任务负载归一化值
+- `chip_power_variation_norm`：芯片实际功率波动归一化值
+- `chip_power_ratio`：芯片实际功率与芯片功率上限的比值，作为辅助指标
 
-为兼容旧引用，运行脚本后仍会在 `outputs/nbsdc_fusion/` 和 `outputs/token_export/` 保留一份同名副本。
-
-`outputs/data/nbsdc_fusion/` 保存三层融合表格：
-
-- `aligned_hourly_fusion.csv`
-- `aligned_hourly_fusion_cn.csv`
-- `nbsdc_fusion_metrics.csv`
-- `nbsdc_fusion_metrics_cn.csv`
-- `room_task_distribution.csv`
-- `room_task_distribution_cn.csv`
-- `rack_task_distribution.csv`
-- `rack_task_distribution_cn.csv`
-- `server_task_distribution.csv`
-- `server_task_distribution_cn.csv`
-
-`outputs/figures/nbsdc_fusion/` 保存三层融合图：
-
-- `price_powercap.png`
-- `hourly_task_arrivals.png`
-- `dvfs_frequency_power.png`
-- `three_layer_power_margin.png`
-- `power_margin_baseline_vs_fused.png`
-- `room_hourly_task_heatmap.png`
-- `room_task_distribution.png`
-- `chip_actual_vs_cap.png`
-
-`outputs/data/token_export/` 保存 Token 出口实验表格：
-
-- `token_export_results.csv`
-- `token_export_results_cn.csv`
-- `hourly_token_export.csv`
-- `hourly_token_export_cn.csv`
-- `region_token_export.csv`
-- `region_token_export_cn.csv`
-- `token_sensitivity_results.csv`
-- `token_sensitivity_results_cn.csv`
-
-`outputs/figures/token_export/` 保存 Token 出口实验图：
-
-- `hourly_token_capacity.png`
-- `power_margin_token_capacity_timeseries.png`
-- `token_export_by_region.png`
-- `token_profit_comparison.png`
-- `cross_timezone_latency.png`
-- `rh_teo_allocation_curve.png`
-- `token_sensitivity.png`
-- `power_to_token_curve.png`，该图仅作为辅助检查，不建议作为核心论文图。
-
-`outputs/reports/` 保存摘要和报告：
-
-- `uploaded_case_cleaning_report.txt`
-- `nbsdc_fusion_summary.txt`
-- `token_export_summary.txt`
-
-说明：`token_export_results.csv` 和 `token_export_results_cn.csv` 保留“不出口”零出口基准；主要柱状图和地区出口图已排除该基准，以突出实际发生 Token 出口的策略差异。
-
-项目同时输出英文标准版 CSV 与中文展示版 CSV。英文版用于程序复现和后续读取，中文 `*_cn.csv` 用于论文表格整理；中文展示版会翻译表头以及策略名、地区名、参数名等字段值。
-
-## 三层融合模型
-
-当前融合模型输出以下关键指标：
-
-- `cluster_cap_norm`：集群功率上限。如果原始功率上限已经在 0-1 之间，直接裁剪到 0-1；否则使用 min-max 归一化。
-- `server_load_norm`：服务器负载，使用小时 CPU 需求的 min-max 归一化。
-- `chip_power_variation_norm`：芯片实际功率相对波动，使用小时实际功率的 min-max 归一化。
-- `chip_power_ratio`：芯片实际功率与芯片功率上限的比例，只作为辅助指标，不直接作为裕度扣减项。
-
-功率裕度公式为：
+当前等效功率裕度公式为：
 
 ```text
 power_margin_norm =
@@ -125,27 +139,17 @@ cluster_cap_norm
 - 0.10
 ```
 
-由于芯片实际功率存在较高基础功耗，项目采用 min-max 归一化刻画芯片功率的相对波动，避免最大值归一化导致曲线过平。`aligned_hourly_fusion.csv` 同时保留 `power_margin_norm_old`，便于对比旧公式与新公式。
-
-## Token 出口优化
-
-RH-TEO 表示 Rolling-Horizon Token Export Optimization，主流程为：
-
-1. 对集群级功率上限、服务器级负载、芯片级实际功率进行小时级对齐。
-2. 计算等效功率裕度。
-3. 将功率裕度折算为 Token 产出能力：
+Token 产出能力由功率裕度折算：
 
 ```text
 token_capacity_t = power_margin_norm_t * token_per_margin_unit
 ```
 
-4. 对国内、欧洲、北美三个 Token 服务场景进行滚动窗口分配，综合收益、电力成本、时延惩罚、SLA 惩罚和出口波动惩罚选择当前小时决策。
+## Token 出口优化
 
-本项目以中国数据中心为算力供给侧，构造国内本地需求、欧洲出口需求和北美出口需求三类 Token 服务场景。欧洲和北美区域参数为扩展场景假设，用于刻画跨境算力服务的价格与时延差异，并非 NBSDC 原始字段。
+RH-TEO 表示 Rolling-Horizon Token Export Optimization。项目构造国内、欧洲、北美三类 Token 服务场景，并综合收益、电力成本、跨时区时延、SLA 惩罚和出口波动惩罚进行滚动优化。
 
-价格敏感性实验选取北美作为高价格、长时延远端出口市场代表，用于刻画远端市场价格变化对 Token 出口分配和净收益的影响。
-
-项目实现了五类策略对比：
+对比策略包括：
 
 - `No-Export`
 - `Power-Margin-Only`
@@ -153,37 +157,21 @@ token_capacity_t = power_margin_norm_t * token_per_margin_unit
 - `Latency-Aware`
 - `RH-TEO`
 
-## 重要声明
+需要注意：NBSDC 原始数据不包含真实 Token 请求字段。本项目中的 Token 出口实验是基于三层融合得到的等效功率裕度构造的扩展场景，不应解释为真实线上 Token 业务记录。
 
-NBSDC 数据集本身不直接提供线上请求级 Token 字段。本项目的 Token 出口实验是基于 NBSDC 三层数据融合得到的等效功率裕度构建的扩展场景，用于近似刻画“电力-算力-Token”转换链路。
-
-因此，代码不会将 NBSDC 原始任务强行改造成 CPU/GPU/token_batch/remote_pool 任务，也不会把 Token 出口结果表作为原始真实请求数据解释。
-
-## 国内视角场景设定说明
-
-本项目以中国数据中心为算力供给侧，构造国内、欧洲、北美三类 Token 服务场景。欧洲和北美参数为扩展场景假设，不是 NBSDC 原始字段。
-
-| 场景 | 定位 | 时延特征 | 价格特征 |
-| --- | --- | --- | --- |
-| 国内 | 本地/近域需求 | 低时延 | 低价格 |
-| 欧洲 | 中距离跨境出口 | 中等时延 | 中等价格 |
-| 北美 | 远端高价出口市场 | 高时延 | 高价格 |
-
-价格敏感性实验选取北美作为高价格、长时延远端出口市场代表，用于刻画远端市场价格变化对 Token 出口分配和净收益的影响。
-
-## 模型假设与局限性
-
-- NBSDC 不包含真实 Token 请求。
-- Token 出口为基于三层数据融合结果构造的扩展场景。
-- 等效功率裕度是归一化指标，不等同于真实剩余功率。
-- 国内、欧洲、北美参数用于刻画价格和时延差异，不是 NBSDC 原始字段。
-
-## 旧项目归档
-
-原 CPU/GPU synthetic 优化实验已归档到：
+## 项目结构
 
 ```text
-archive/legacy_synthetic_optimization/
+config/                         Token 出口实验配置
+data/raw/                       原始 Excel 输入，用户放置
+data/real_case/                 清洗后的中间 CSV，本地生成
+docs/                           实验设计和图表说明
+experiments/                    核心实验逻辑
+outputs/                        本地运行结果
+scripts/                        数据清洗脚本
+utils/                          IO、指标、绘图工具
+main.py                         一键运行入口
+run_nbsdc_fusion.py             分步运行入口
+run_token_export.py             分步运行入口
+legacy_workflows/legacy_synthetic_optimization/  旧版 synthetic 优化实验
 ```
-
-归档内容包括旧的 `models/`、`schedulers/`、`optimizers/`、`main.py`、NSGA-II/GA/PSO 对比、消融实验、滚动实验、灵敏度实验和合成任务数据生成逻辑。该部分保留用于追溯，不作为当前论文主线。

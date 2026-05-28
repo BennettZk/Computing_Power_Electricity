@@ -1,0 +1,26 @@
+{
+  "resource_types": [
+    {
+      "server_type": "cpu",
+      "count": 20,
+      "max_compute": 32.0,
+      "idle_power": 0.18,
+      "peak_power": 0.42,
+      "memory_capacity": 256.0,
+      "bandwidth_capacity": 32.0,
+      "queue_service_rate": 28.0,
+      "cooling_coeff": 0.24
+    },
+    {
+      "server_type": "gpu",
+      "count": 8,
+      "max_compute": 14.0,
+      "idle_power": 0.35,
+      "peak_power": 0.95,
+      "memory_capacity": 192.0,
+      "bandwidth_capacity": 48.0,
+      "queue_service_rate": 11.0,
+      "cooling_coeff": 0.31
+    }
+  ]
+}

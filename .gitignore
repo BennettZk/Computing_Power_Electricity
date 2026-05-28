@@ -10,6 +10,14 @@ summary.txt
 outputs/*
 !outputs/.gitkeep
 
+# Keep legacy workflow data directories but do not track local inputs/results.
+legacy_workflows/legacy_synthetic_optimization/data/*
+!legacy_workflows/legacy_synthetic_optimization/data/.gitkeep
+
+# Keep the legacy outputs directory but do not track generated results.
+legacy_workflows/legacy_synthetic_optimization/outputs/*
+!legacy_workflows/legacy_synthetic_optimization/outputs/.gitkeep
+
 # Keep the data directory but do not track its contents.
 data/*
 !data/.gitkeep
