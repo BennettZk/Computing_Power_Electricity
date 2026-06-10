@@ -5,6 +5,7 @@ __pycache__/
 
 results.csv
 summary.txt
+output/dc_region_allocation_matrix.csv
 
 # Keep the outputs directory but do not track its contents.
 outputs/*
@@ -39,3 +40,6 @@ data/raw/*
 *.avif
 *.heic
 *.heif
+
+# Videos
+*.mp4
