@@ -12,13 +12,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def project_path(path: str | Path) -> Path:
-    """Resolve a repository-relative path."""
+    """解析相对于项目根目录的路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def ensure_dir(path: str | Path) -> Path:
-    """Create a directory and return it as a Path."""
+    """创建目录并以 Path 对象返回。"""
     output_dir = project_path(path)
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
@@ -26,11 +26,10 @@ def ensure_dir(path: str | Path) -> Path:
 
 def load_yaml_like(path: str | Path) -> dict:
     """
-    Load the lightweight JSON-compatible YAML files used by this project.
+    加载项目使用的轻量级、兼容 JSON 语法的 YAML 配置文件。
 
-    The project keeps the .yaml suffix for readability in the README, but the
-    configuration syntax is intentionally JSON-compatible to avoid an extra
-    dependency such as PyYAML.
+    项目在 README 中保留 .yaml 后缀以提升可读性，但配置语法有意保持
+    JSON 兼容，从而避免引入 PyYAML 这类额外依赖。
     """
     config_path = project_path(path)
     try:
@@ -42,7 +41,7 @@ def load_yaml_like(path: str | Path) -> dict:
 
 
 def write_text(path: str | Path, lines: str | Iterable[str]) -> Path:
-    """Write UTF-8 text, accepting either a string or a list of lines."""
+    """写入 UTF-8 文本，支持传入字符串或多行列表。"""
     output_path = project_path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     text = lines if isinstance(lines, str) else "\n".join(str(line) for line in lines)
@@ -51,7 +50,7 @@ def write_text(path: str | Path, lines: str | Iterable[str]) -> Path:
 
 
 def read_csv_required(path: str | Path, required_columns: Iterable[str] | None = None) -> pd.DataFrame:
-    """Read a CSV and raise a clear error if required columns are missing."""
+    """读取 CSV，并在缺少必需列时抛出清晰错误。"""
     csv_path = project_path(path)
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
@@ -64,7 +63,7 @@ def read_csv_required(path: str | Path, required_columns: Iterable[str] | None =
 
 
 def save_csv(df: pd.DataFrame, path: str | Path) -> Path:
-    """Save a program-readable CSV with English column names."""
+    """保存程序可读的 CSV，列名保持英文。"""
     output_path = project_path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
@@ -72,7 +71,7 @@ def save_csv(df: pd.DataFrame, path: str | Path) -> Path:
 
 
 def copy_file(src: str | Path, dst: str | Path) -> Path:
-    """Copy a generated file while preserving metadata."""
+    """复制生成文件，并保留文件元数据。"""
     src_path = project_path(src)
     dst_path = project_path(dst)
     dst_path.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +80,7 @@ def copy_file(src: str | Path, dst: str | Path) -> Path:
 
 
 def copy_matching_files(source_dir: str | Path, target_dir: str | Path, suffixes: Iterable[str]) -> list[Path]:
-    """Copy files with selected suffixes from one output directory to another."""
+    """把一个输出目录中指定后缀的文件复制到另一个目录。"""
     source_path = project_path(source_dir)
     target_path = ensure_dir(target_dir)
     allowed = {suffix.lower() for suffix in suffixes}

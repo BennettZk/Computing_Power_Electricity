@@ -38,6 +38,7 @@ class HeterogeneousSchedulingProblem(ElementwiseProblem):
         price_cfg: dict,
         experiment_cfg: dict,
     ) -> None:
+        """初始化对象状态并缓存后续计算所需参数。"""
         self.hourly_df = hourly_df
         self.tasks = tasks
         self.resource_pool = resource_pool

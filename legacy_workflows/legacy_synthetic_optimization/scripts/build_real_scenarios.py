@@ -110,11 +110,13 @@ REQUIRED_TASK_COLS = [
 
 
 def _project_path(path: str | Path) -> Path:
+    """将输入路径解析为项目根目录下的绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _default_input_path() -> Path:
+    """选择真实场景构建脚本的默认任务输入文件。"""
     candidates = [
         PROJECT_ROOT / "data" / "real_case" / "server_tasks_24h.csv",
         PROJECT_ROOT / "data" / "real" / "tasks.csv",
@@ -129,6 +131,7 @@ def _default_input_path() -> Path:
 
 
 def _load_base_hourly() -> pd.DataFrame:
+    """加载真实场景使用的基础小时级价格和碳排放曲线。"""
     candidates = [
         PROJECT_ROOT / "data" / "real_case" / "hourly_input_24h.csv",
         PROJECT_ROOT / "data" / "real" / "hourly_input.csv",
@@ -144,6 +147,7 @@ def _load_base_hourly() -> pd.DataFrame:
 
 
 def _as_bool_series(series: pd.Series, default: bool = False) -> pd.Series:
+    """把输入列转换为布尔序列。"""
     if series is None:
         return pd.Series([default] * 0)
     if series.dtype == bool:
@@ -152,6 +156,7 @@ def _as_bool_series(series: pd.Series, default: bool = False) -> pd.Series:
 
 
 def _series_or_default(df: pd.DataFrame, col: str, default) -> pd.Series:
+    """读取 DataFrame 列，缺失时返回默认序列。"""
     if col in df.columns:
         return df[col]
     if isinstance(default, pd.Series):
@@ -160,6 +165,7 @@ def _series_or_default(df: pd.DataFrame, col: str, default) -> pd.Series:
 
 
 def _scale_cpu_demand(raw_cpu: pd.Series) -> pd.Series:
+    """把原始 CPU 需求缩放到实验模型使用的需求区间。"""
     numeric = pd.to_numeric(raw_cpu, errors="coerce").fillna(1.0).clip(lower=0.0)
     q95 = max(float(numeric.quantile(0.95)), 1.0)
     scaled = 0.45 + np.clip(numeric / q95, 0.0, 1.0) * 2.05
@@ -167,6 +173,7 @@ def _scale_cpu_demand(raw_cpu: pd.Series) -> pd.Series:
 
 
 def _enhance_tasks(df: pd.DataFrame, seed: int) -> pd.DataFrame:
+    """为真实任务补充异构资源、Token 和迁移相关字段。"""
     rng = np.random.default_rng(seed)
     n_rows = len(df)
     if n_rows == 0:
@@ -188,8 +195,8 @@ def _enhance_tasks(df: pd.DataFrame, seed: int) -> pd.DataFrame:
     legal_types = {"delay_sensitive", "delay_tolerant", "token_batch"}
     if "task_type" in df.columns:
         task_type = df["task_type"].astype(str).where(df["task_type"].astype(str).isin(legal_types), "delay_sensitive")
-        # Uploaded real case has no GPU/token semantics. Promote the heaviest tolerant jobs to token_batch
-        # so the real scaled scenarios still exercise heterogeneous GPU/token behavior.
+        # 上传的真实案例没有 GPU/token 语义，因此把最重的可延迟任务提升为 token_batch，
+        # 让真实缩放场景仍能覆盖异构 GPU/token 行为。
         if (task_type == "token_batch").sum() == 0:
             promote = (task_type != "delay_sensitive") & (heavy_score >= heavy_score.quantile(0.80))
             task_type = task_type.mask(promote, "token_batch")
@@ -245,6 +252,7 @@ def _enhance_tasks(df: pd.DataFrame, seed: int) -> pd.DataFrame:
 
 
 def _target_count_by_hour(hour_counts: pd.Series, target_size: int) -> pd.Series:
+    """按小时计算缩放后目标任务数量。"""
     total = int(hour_counts.sum())
     if target_size >= total:
         return hour_counts.astype(int)
@@ -258,6 +266,7 @@ def _target_count_by_hour(hour_counts: pd.Series, target_size: int) -> pd.Series
 
 
 def _sample_by_hour(tasks: pd.DataFrame, target_size: int, seed: int) -> pd.DataFrame:
+    """按小时分层抽样任务以构造目标规模数据集。"""
     hour_counts = tasks.groupby("arrival_time").size().reindex(range(24), fill_value=0)
     target_counts = _target_count_by_hour(hour_counts, target_size)
     sampled_parts: list[pd.DataFrame] = []
@@ -273,6 +282,7 @@ def _sample_by_hour(tasks: pd.DataFrame, target_size: int, seed: int) -> pd.Data
 
 
 def _hourly_for_tasks(tasks: pd.DataFrame, base_hourly: pd.DataFrame) -> pd.DataFrame:
+    """根据任务分布生成匹配的小时级输入曲线。"""
     hourly = pd.DataFrame({"hour": range(24)})
     hourly["arrival_rate"] = tasks.groupby("arrival_time").size().reindex(range(24), fill_value=0).to_numpy(dtype=int)
     base = base_hourly.set_index("hour").reindex(range(24))
@@ -283,15 +293,18 @@ def _hourly_for_tasks(tasks: pd.DataFrame, base_hourly: pd.DataFrame) -> pd.Data
 
 
 def _scenario_name(target: str) -> str:
+    """根据目标任务数生成真实缩放场景名称。"""
     return "full" if target.lower() == "full" else f"{int(target) // 1000}k"
 
 
 def _write_report(rows: list[str], output_path: Path) -> None:
+    """写入真实场景构建报告。"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(rows), encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="基于真实案例任务构建 real_5k / real_10k / real_full 缩放场景。")
     parser.add_argument("--input", help="标准任务 CSV。默认优先 data/real_case/server_tasks_24h.csv，再尝试 data/real/tasks.csv。")
     parser.add_argument("--output-dir", default="data/real_scaled", help="输出目录。")
@@ -301,6 +314,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     input_path = _project_path(args.input) if args.input else _default_input_path()
     output_dir = _project_path(args.output_dir)

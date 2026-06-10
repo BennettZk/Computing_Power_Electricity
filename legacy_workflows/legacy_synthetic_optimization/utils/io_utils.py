@@ -90,10 +90,12 @@ def ensure_inputs(configs: dict[str, dict]) -> tuple[pd.DataFrame, list]:
 
 
 def ensure_output_dirs(experiment_cfg: dict) -> Path:
+    """创建旧流程实验所需的输出目录集合。"""
     outputs_dir = Path(experiment_cfg["paths"]["outputs_dir"])
     outputs_dir.mkdir(parents=True, exist_ok=True)
     return outputs_dir
 
 
 def write_summary(summary_path: str | Path, lines: list[str]) -> None:
+    """把实验摘要文本写入指定文件。"""
     Path(summary_path).write_text("\n".join(lines), encoding="utf-8")

@@ -15,8 +15,11 @@ REQUIRED_FILES = [
 
 
 def main() -> None:
+    # 脚本入口
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     data_dir = Path("data/real_case")
     missing = [name for name in REQUIRED_FILES if not (data_dir / name).exists()]
+
     if missing:
         print("Missing cleaned NBSDC CSV files:")
         for name in missing:
@@ -26,6 +29,7 @@ def main() -> None:
 
     outputs = run_nbsdc_fusion(data_dir=data_dir)
     print("NBSDC fusion finished.")
+    # 遍历输入集合并逐项处理
     for name, path in outputs.items():
         print(f"- {name}: {path}")
 

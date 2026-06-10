@@ -46,4 +46,5 @@ class ResourcePool:
         return {"cpu": self.cpu, "gpu": self.gpu}
 
     def server_limits(self) -> dict[str, int]:
+        """返回 CPU 与 GPU 资源的服务器数量上限。"""
         return {name: resource.count for name, resource in self.as_dict().items()}

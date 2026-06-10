@@ -21,16 +21,19 @@ from utils.metrics import RESULT_CSV_COLUMN_MAPPING, export_csv_chinese
 
 
 def _project_path(path: str | Path) -> Path:
+    """将输入路径解析为项目根目录下的绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _count_csv_rows(path: Path) -> int:
+    """统计 CSV 文件的数据行数。"""
     with path.open("rb") as handle:
         return max(sum(1 for _ in handle) - 1, 0)
 
 
 def _csv_size_mb(path: Path) -> float:
+    """计算 CSV 文件大小并转换为 MB。"""
     return path.stat().st_size / (1024 * 1024)
 
 
@@ -43,6 +46,7 @@ def _record(
     elapsed_seconds: float,
     repeat_index: int,
 ) -> None:
+    """记录单次基准测试的耗时、规模和输出路径。"""
     rows.append(
         {
             "scale_or_tasks_path": str(tasks_path),
@@ -57,6 +61,7 @@ def _record(
 
 
 def _load_inputs(tasks_path: Path):
+    """加载真实场景实验的小时曲线和任务输入。"""
     configs = load_all_configs(PROJECT_ROOT / "config")
     hourly_df = ensure_hourly_profile(configs["base"], configs["price"])
     resource_pool = load_resource_pool(configs["resource"])
@@ -65,6 +70,7 @@ def _load_inputs(tasks_path: Path):
 
 
 def _build_quick_proposed_schedule(price_only_schedule: SchedulePlan, hourly_df: pd.DataFrame, price_cfg: dict) -> SchedulePlan:
+    """构建快速基准测试使用的 Proposed 调度方案。"""
     high_price_threshold = float(hourly_df["price"].quantile(price_cfg["high_price_quantile"]))
     migration_ratio = np.where(hourly_df["price"].to_numpy(dtype=float) >= high_price_threshold, 0.2, 0.0)
     return SchedulePlan(
@@ -76,6 +82,7 @@ def _build_quick_proposed_schedule(price_only_schedule: SchedulePlan, hourly_df:
 
 
 def run_quick_benchmark(tasks_path: Path, repeat: int) -> list[dict]:
+    """运行轻量级基准测试并记录耗时。"""
     rows: list[dict] = []
     for repeat_index in range(1, repeat + 1):
         started = perf_counter()
@@ -139,6 +146,7 @@ def run_quick_benchmark(tasks_path: Path, repeat: int) -> list[dict]:
 
 
 def run_full_benchmark(tasks_path: Path, repeat: int) -> list[dict]:
+    """运行完整基准测试并记录各阶段耗时。"""
     rows: list[dict] = []
     task_count = _count_csv_rows(tasks_path)
     print("WARNING: full mode runs the complete main experiment and may take a long time on large task CSV files.")
@@ -149,6 +157,7 @@ def run_full_benchmark(tasks_path: Path, repeat: int) -> list[dict]:
     original_load_all_configs = exp_main.load_all_configs
 
     def patched_load_all_configs():
+        """临时替换配置加载结果以便基准测试复用指定配置。"""
         configs = original_load_all_configs()
         configs = {**configs}
         configs["experiment"] = {**configs["experiment"], "paths": {**configs["experiment"]["paths"]}}
@@ -168,6 +177,7 @@ def run_full_benchmark(tasks_path: Path, repeat: int) -> list[dict]:
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="测试不同规模任务数据下的调度仿真运行时间。")
     parser.add_argument("--tasks-path", default="data/synthetic/tasks.csv", help="任务 CSV 路径。")
     parser.add_argument("--mode", choices=["quick", "full"], default="quick", help="quick 只跑核心单次仿真；full 跑完整 main 实验。")
@@ -177,6 +187,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     if args.repeat <= 0:
         raise ValueError("--repeat must be a positive integer.")

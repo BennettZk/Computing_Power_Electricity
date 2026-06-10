@@ -53,6 +53,7 @@ class Task:
 
     @property
     def deadline_slot(self) -> int:
+        """计算任务允许完成的最晚时隙。"""
         return int(self.deadline)
 
 
@@ -105,6 +106,7 @@ def load_tasks_csv(csv_path: str | Path) -> list[Task]:
 
 
 def tasks_to_dataframe(tasks: list[Task]) -> pd.DataFrame:
+    """把任务对象列表转换为 DataFrame。"""
     return pd.DataFrame([asdict(task) for task in tasks])
 
 

@@ -22,6 +22,8 @@ class RollingExperimentResult:
 
 
 def _window_base_cfg(base_cfg: dict, start_hour: int, window_hours: int) -> dict:
+
+    """为滚动窗口实验生成窗口内基础配置。"""
     cfg = {
         **base_cfg,
         "time": {**base_cfg["time"], "hours": window_hours},
@@ -39,6 +41,8 @@ def _window_base_cfg(base_cfg: dict, start_hour: int, window_hours: int) -> dict
 
 
 def _window_experiment_cfg(experiment_cfg: dict, start_hour: int) -> dict:
+
+    """为滚动窗口实验生成轻量化优化参数。"""
     optimizer_cfg = experiment_cfg["optimizer"]
     rolling_optimizer = {
         **optimizer_cfg,
@@ -53,6 +57,8 @@ def _window_experiment_cfg(experiment_cfg: dict, start_hour: int) -> dict:
 
 
 def _slice_hourly_df(hourly_df: pd.DataFrame, start_hour: int, end_hour: int) -> pd.DataFrame:
+
+    """截取指定滚动窗口的小时级输入数据。"""
     window_df = hourly_df.iloc[start_hour:end_hour].copy().reset_index(drop=True)
     window_df["hour"] = np.arange(len(window_df), dtype=int)
     return window_df
@@ -61,6 +67,7 @@ def _slice_hourly_df(hourly_df: pd.DataFrame, start_hour: int, end_hour: int) ->
 def _slice_window_tasks(tasks: list[Task], start_hour: int, end_hour: int) -> list[Task]:
     """提取当前队列和未来窗口任务，并将到达/截止时隙改写为窗口内相对时间。"""
     window_tasks: list[Task] = []
+    # 遍历输入集合并逐项处理
     for task in tasks:
         if int(task.arrival_time) >= end_hour or int(task.deadline_slot) < start_hour:
             continue
@@ -95,6 +102,7 @@ def _metrics_row(
     window_end: int | None = None,
     optimized_task_count: int | None = None,
 ) -> dict:
+    """把仿真结果整理为结果表中的一行指标。"""
     return {
         "algorithm": algorithm,
         "scope": scope,

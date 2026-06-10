@@ -38,35 +38,43 @@ REGION_COLUMNS = {
 }
 
 def _plot_ready_summary(summary: pd.DataFrame) -> pd.DataFrame:
-    """Exclude the zero-export baseline from main comparison figures."""
+    """从主要对比图中排除零出口基线。"""
+
     return summary[summary["strategy"] != "No-Export"].copy()
 
 
 def _plot_ready_region(region_results: pd.DataFrame) -> pd.DataFrame:
-    """Exclude the zero-export baseline from main region-export figures."""
+    """从主要区域出口图中排除零出口基线。"""
+
     return region_results[region_results["strategy"] != "No-Export"].copy()
 
 
 def _token_capacity(fusion_df: pd.DataFrame, config: dict) -> pd.Series:
+
+    """把等效功率裕度折算为当前小时的 Token 产出能力。"""
     return fusion_df["power_margin_norm"].clip(lower=0.0) * float(config["token_per_margin_unit"])
 
 
 def _local_hour(hour: int, region_cfg: dict) -> int:
+    """根据地区时区偏移计算该地区的本地小时。"""
     return int((hour + int(region_cfg.get("timezone_offset", 0))) % 24)
 
 
 def _demand_multiplier(hour: int, region_cfg: dict) -> float:
+    """根据地区本地高峰时段计算 Token 需求倍率。"""
     local_hour = _local_hour(hour, region_cfg)
     return 1.2 if local_hour in set(region_cfg.get("demand_peak_hours", [])) else 0.9
 
 
 def _electricity_price_per_kwh(price_value: float) -> float:
-    # NBSDC cluster data is typically USD/MWh. If a small synthetic-style value is
-    # supplied, treat it as already being a per-kWh tariff.
+    # NBSDC 集群数据通常使用 USD/MWh；如果传入较小的合成数据式数值，
+    # 则将其视为已经是每 kWh 电价。
+    """将电价统一换算为每 kWh 成本口径。"""
     return float(price_value) / 1000.0 if float(price_value) > 5.0 else float(price_value)
 
 
 def _energy_per_million_tokens(margin_norm: float) -> float:
+    """根据功率裕度估算每百万 Token 的能耗。"""
     margin_norm = max(0.0, min(1.0, float(margin_norm)))
     return 0.35 + 0.65 * (1.0 - margin_norm)
 
@@ -78,6 +86,7 @@ def _evaluate_hour(
     config: dict,
     previous_export_tokens: float,
 ) -> dict:
+    """评价单小时 Token 分配方案的收益、成本、延迟和效用。"""
     regions = config["regions"]
     capacity = float(row["token_capacity"])
     export_tokens = float(sum(allocation.values()))
@@ -135,10 +144,12 @@ def _evaluate_hour(
 
 
 def _zero_alloc() -> dict[str, float]:
+    """生成所有出口地区均为零的 Token 分配方案。"""
     return {region: 0.0 for region in REGION_COLUMNS}
 
 
 def _shares_grid(step: float = 0.25) -> list[dict[str, float]]:
+    """枚举三地区 Token 出口份额的离散候选组合。"""
     values = np.arange(0.0, 1.0 + step / 2, step)
     shares: list[dict[str, float]] = []
     for domestic, europe in product(values, values):
@@ -150,11 +161,13 @@ def _shares_grid(step: float = 0.25) -> list[dict[str, float]]:
 
 
 def _allocation_from_share(capacity: float, total_ratio: float, share: dict[str, float]) -> dict[str, float]:
+    """根据总出口比例和地区份额生成 Token 分配量。"""
     total = max(0.0, min(1.0, float(total_ratio))) * max(0.0, float(capacity))
     return {region: total * share.get(region, 0.0) for region in REGION_COLUMNS}
 
 
 def _run_fixed_strategy(strategy: str, hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """运行固定规则的 Token 出口策略并输出逐小时结果。"""
     rows: list[dict] = []
     previous_export = 0.0
     price_median = hourly["price"].median()
@@ -185,6 +198,7 @@ def _run_fixed_strategy(strategy: str, hourly: pd.DataFrame, config: dict) -> pd
 
 
 def _run_rh_teo(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """运行滚动时域 Token 出口优化策略。"""
     shares = _shares_grid(step=0.25)
     total_ratios = [0.0, 0.25, 0.50, 0.75, 1.0]
     window_size = int(config["window_size_hours"])
@@ -220,6 +234,7 @@ def _run_rh_teo(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 
 def _summarize_strategy(hourly_result: pd.DataFrame) -> dict:
+    """汇总单个策略的总出口量、收益、成本和服务质量指标。"""
     total_export = float(hourly_result["export_tokens"].sum())
     total_million = total_export / 1_000_000.0
     revenue = float(hourly_result["token_export_revenue"].sum())
@@ -244,6 +259,7 @@ def _summarize_strategy(hourly_result: pd.DataFrame) -> dict:
 
 
 def _run_all_strategies(hourly: pd.DataFrame, config: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """运行所有 Token 出口对比策略并整理汇总结果。"""
     strategy_frames = [
         _run_fixed_strategy("No-Export", hourly, config),
         _run_fixed_strategy("Power-Margin-Only", hourly, config),
@@ -265,9 +281,11 @@ def _run_all_strategies(hourly: pd.DataFrame, config: dict) -> tuple[pd.DataFram
 
 
 def _run_sensitivity(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
+    """执行 Token 出口关键参数敏感性分析。"""
     rows: list[dict] = []
 
     def collect(parameter: str, value, modified_config: dict) -> None:
+        """运行一次敏感性配置并记录 RH-TEO 汇总指标。"""
         rh = _run_rh_teo(hourly.assign(token_capacity=_token_capacity(hourly, modified_config)), modified_config)
         summary = _summarize_strategy(rh)
         rows.append(
@@ -317,6 +335,7 @@ def _run_sensitivity(hourly: pd.DataFrame, config: dict) -> pd.DataFrame:
 
 
 def _plot_region_export(region_results: pd.DataFrame, output_dir: Path) -> None:
+    """绘制不同策略下各地区 Token 出口量堆叠图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -341,6 +360,7 @@ def _plot_region_export(region_results: pd.DataFrame, output_dir: Path) -> None:
 
 
 def _plot_bar(df: pd.DataFrame, x: str, y: str, path: Path, title: str, ylabel: str) -> None:
+    """绘制策略对比柱状图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -362,6 +382,7 @@ def _plot_bar(df: pd.DataFrame, x: str, y: str, path: Path, title: str, ylabel: 
 
 
 def _plot_profit_latency_tradeoff(summary: pd.DataFrame, output_dir: Path) -> None:
+    """绘制 Token 净收益与跨时区延迟的权衡图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -400,6 +421,7 @@ def _plot_profit_latency_tradeoff(summary: pd.DataFrame, output_dir: Path) -> No
 
 
 def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
+    """绘制 Token 出口关键参数敏感性结果图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -458,6 +480,7 @@ def _plot_sensitivity(sensitivity: pd.DataFrame, output_dir: Path) -> None:
 
 
 def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_results: pd.DataFrame, sensitivity: pd.DataFrame, output_dir: Path) -> None:
+    """集中生成 Token 出口实验的全部图表输出。"""
     plot_summary = _plot_ready_summary(summary)
     plot_region_results = _plot_ready_region(region_results)
     capacity_df = hourly_results[hourly_results["strategy"] == "RH-TEO"][["hour", "token_capacity"]].copy()
@@ -475,7 +498,7 @@ def _plot_outputs(summary: pd.DataFrame, hourly_results: pd.DataFrame, region_re
     _plot_bar(plot_summary, "strategy", "avg_cross_timezone_delay", output_dir / "cross_timezone_latency.png", "不同Token出口策略跨时区服务时延对比", "平均时延/h")
     _plot_profit_latency_tradeoff(plot_summary, output_dir)
 
-    # Rebuild the curve from RH-TEO rows so the x-axis is the fused margin.
+    # 从 RH-TEO 结果重建曲线，使 x 轴表示融合后的功率裕度。
     rh_rows = hourly_results[hourly_results["strategy"] == "RH-TEO"].sort_values("token_capacity")
     margin_curve = rh_rows[["hour", "token_capacity"]].copy()
     if "power_margin_norm" in rh_rows.columns:
@@ -557,6 +580,7 @@ def run_token_export(
     report_output_dir: str | Path = "outputs/reports",
     compat_output_dir: str | Path | None = "outputs/token_export",
 ) -> dict[str, Path]:
+    """运行 Token 出口优化实验并导出表格、图表和摘要报告。"""
     if config is None:
         raise ValueError("config is required")
     data_output_dir = ensure_dir(data_output_dir)

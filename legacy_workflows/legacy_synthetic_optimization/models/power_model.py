@@ -36,6 +36,7 @@ def hourly_total_power_kw(
     peak_power_kw: float,
     pue: float,
 ) -> float:
+    """计算单个小时的异构资源总功率。"""
     return hourly_it_power_kw(
         arrival_rate=arrival_rate,
         service_rate_per_server=service_rate_per_server,
@@ -78,6 +79,7 @@ def hourly_heterogeneous_power_kw(
 
 
 def _sum_weighted(values: Sequence[float], weights: Sequence[float], delta_t_hours: float) -> float:
+    """按小时权重累加功率序列对应的成本或排放量。"""
     return float(sum(float(v) * float(w) * delta_t_hours for v, w in zip(values, weights)))
 
 

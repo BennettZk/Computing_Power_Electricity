@@ -17,6 +17,7 @@ def _evaluate_population(
     base_cfg: dict,
     price_cfg: dict,
 ) -> tuple[np.ndarray, list[tuple]]:
+    """批量评价遗传算法种群中每个个体的适应度。"""
     fitness_values: list[float] = []
     evaluated: list[tuple] = []
     for individual in population:
@@ -35,6 +36,7 @@ def _evaluate_population(
 
 
 def _tournament_select(population: np.ndarray, fitness_values: np.ndarray, rng: np.random.Generator, tournament_size: int) -> np.ndarray:
+    """执行锦标赛选择并返回获胜个体。"""
     indices = rng.integers(0, len(population), size=tournament_size)
     best_idx = indices[int(np.argmin(fitness_values[indices]))]
     return population[best_idx].copy()
@@ -46,6 +48,7 @@ def _mutate_integer_vector(
     rng: np.random.Generator,
     mutation_rate: float,
 ) -> np.ndarray:
+    """按给定概率扰动整数编码个体。"""
     mask = rng.random(individual.size) < mutation_rate
     if not np.any(mask):
         return individual

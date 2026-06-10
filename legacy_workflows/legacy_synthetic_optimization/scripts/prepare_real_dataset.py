@@ -14,28 +14,34 @@ DEFAULT_RENEWABLE = [0.36, 0.38, 0.40, 0.42, 0.45, 0.43, 0.30, 0.28, 0.24, 0.22,
 
 
 def _read_csv(path: Path) -> pd.DataFrame:
+    """读取 CSV 文件，并在缺失时给出清晰错误。"""
     return pd.read_csv(path)
 
 
 def _ensure_parent(path: Path) -> None:
+    """确保输出文件的父目录存在。"""
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _has_col(df: pd.DataFrame, col: str | None) -> bool:
+    """判断 DataFrame 是否包含指定列。"""
     return bool(col) and col in df.columns
 
 
 def _warn(warnings: list[str], message: str) -> None:
+    """记录数据清洗过程中的警告信息。"""
     warnings.append(message)
     print(f"WARNING: {message}")
 
 
 def _guess_columns(columns: list[str], keywords: list[str]) -> list[str]:
+    """根据候选列名推断原始数据中的关键字段。"""
     lowered = {col: col.lower() for col in columns}
     return [col for col, lower in lowered.items() if any(keyword in lower for keyword in keywords)]
 
 
 def build_profile(df: pd.DataFrame, input_path: Path) -> str:
+    """根据原始数据生成小时级价格、负载和功率画像。"""
     columns = list(df.columns)
     lines: list[str] = [
         "真实数据字段画像",
@@ -77,6 +83,7 @@ def build_profile(df: pd.DataFrame, input_path: Path) -> str:
 
 
 def _numeric_series(df: pd.DataFrame, col: str | None, default: float, warnings: list[str], fill_counter: dict[str, int], name: str) -> pd.Series:
+    """读取数值列并处理缺失列或非法值。"""
     if not _has_col(df, col):
         _warn(warnings, f"{name} 字段缺失，使用默认值 {default}。")
         fill_counter[name] = len(df)
@@ -91,6 +98,7 @@ def _numeric_series(df: pd.DataFrame, col: str | None, default: float, warnings:
 
 
 def _text_series(df: pd.DataFrame, col: str | None, default_prefix: str, warnings: list[str], fill_counter: dict[str, int], name: str) -> pd.Series:
+    """读取文本列并处理缺失列。"""
     if not _has_col(df, col):
         _warn(warnings, f"{name} 字段缺失，使用 {default_prefix}-行号 自动生成。")
         fill_counter[name] = len(df)
@@ -106,6 +114,7 @@ def _text_series(df: pd.DataFrame, col: str | None, default_prefix: str, warning
 
 
 def _map_time_to_hour(df: pd.DataFrame, time_col: str | None, warnings: list[str], fill_counter: dict[str, int]) -> pd.Series:
+    """将原始时间字段映射到 0 到 23 的小时索引。"""
     n_rows = len(df)
     if n_rows == 0:
         return pd.Series([], dtype=int)
@@ -146,6 +155,7 @@ def _map_time_to_hour(df: pd.DataFrame, time_col: str | None, warnings: list[str
 
 
 def _infer_task_type(gpu: pd.Series, cpu: pd.Series, memory: pd.Series, duration: pd.Series, explicit: pd.Series | None = None) -> pd.Series:
+    """根据任务特征推断任务类型。"""
     allowed = {"delay_sensitive", "delay_tolerant", "token_batch"}
     inferred = pd.Series(["delay_sensitive"] * len(gpu), index=gpu.index, dtype="object")
     inferred[gpu > 0] = "token_batch"
@@ -175,6 +185,7 @@ def _infer_task_type(gpu: pd.Series, cpu: pd.Series, memory: pd.Series, duration
 
 
 def _priority_from_task_type(task_type: pd.Series, explicit_priority: pd.Series | None, warnings: list[str], fill_counter: dict[str, int]) -> pd.Series:
+    """根据任务类型生成优先级。"""
     default_priority = task_type.map({"delay_sensitive": 3, "delay_tolerant": 2, "token_batch": 1}).fillna(2).astype(int)
     if explicit_priority is None:
         fill_counter["priority"] = len(task_type)
@@ -194,6 +205,7 @@ def _build_deadline(
     warnings: list[str],
     fill_counter: dict[str, int],
 ) -> tuple[pd.Series, int]:
+    """根据任务类型和到达时间生成截止时间。"""
     if deadline_raw is None:
         deadline = arrival + np.maximum(np.ceil(duration).astype(int), 2)
         fill_counter["deadline"] = len(arrival)
@@ -216,6 +228,7 @@ def _build_deadline(
 
 
 def _bool_series(df: pd.DataFrame, col: str | None, default: bool) -> pd.Series:
+    """把原始布尔字段转换为布尔序列。"""
     if not _has_col(df, col):
         return pd.Series([default] * len(df), index=df.index)
     values = df[col]
@@ -225,6 +238,7 @@ def _bool_series(df: pd.DataFrame, col: str | None, default: bool) -> pd.Series:
 
 
 def convert_dataset(args: argparse.Namespace, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, str]:
+    """把原始真实数据转换为旧流程可用的任务 CSV。"""
     warnings: list[str] = []
     fill_counter: dict[str, int] = {}
     original_rows = len(df)
@@ -298,6 +312,7 @@ def _hourly_from_optional_col(
     warnings: list[str],
     name: str,
 ) -> list[float]:
+    """从可选列生成小时级均值序列，缺失时使用默认曲线。"""
     if not _has_col(df, col):
         _warn(warnings, f"{name} 字段缺失，使用项目默认 24 小时曲线。")
         return default_values
@@ -322,6 +337,7 @@ def build_cleaning_report(
     deadline_truncated_count: int,
     profile_only: bool,
 ) -> str:
+    """构建真实数据清洗报告。"""
     lines = [
         "真实数据清洗报告",
         "",
@@ -385,6 +401,7 @@ def build_cleaning_report(
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="将未知字段真实数据画像或转换为项目标准输入 CSV。")
     parser.add_argument("--input", required=True, help="真实数据 CSV 路径。")
     parser.add_argument("--profile-only", action="store_true", help="只输出字段画像，不生成标准输入。")
@@ -414,6 +431,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     input_path = Path(args.input)
     output_profile = Path(args.profile_output)

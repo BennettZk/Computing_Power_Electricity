@@ -31,6 +31,7 @@ class SingleObjectiveRunResult:
 
 
 def build_bounds(resource_pool: ResourcePool, base_cfg: dict, experiment_cfg: dict) -> DecisionBounds:
+    """根据资源池和时隙数构建优化变量上下界。"""
     optimizer_cfg = experiment_cfg["optimizer"]
     hours = int(base_cfg["time"]["hours"])
     defer_levels = max(1, int(optimizer_cfg["defer_ratio_levels"]))
@@ -60,6 +61,7 @@ def build_bounds(resource_pool: ResourcePool, base_cfg: dict, experiment_cfg: di
 
 
 def decode_schedule(vector: np.ndarray, bounds: DecisionBounds) -> SchedulePlan:
+    """把优化器个体向量解码为可仿真的调度方案。"""
     values = np.rint(np.asarray(vector, dtype=float)).astype(int)
     values = np.clip(values, bounds.xl, bounds.xu)
     hours = bounds.hours
@@ -71,6 +73,7 @@ def decode_schedule(vector: np.ndarray, bounds: DecisionBounds) -> SchedulePlan:
 
 
 def weighted_fitness_from_metrics(metrics: SimulationResult) -> float:
+    """把仿真指标转换为单目标优化使用的加权适应度。"""
     return float(
         metrics.total_cost
         + 1000.0 * metrics.avg_delay_hours
@@ -89,6 +92,7 @@ def evaluate_weighted_fitness(
     base_cfg: dict,
     price_cfg: dict,
 ) -> tuple[float, SchedulePlan, SimulationResult]:
+    """解码候选个体并返回其加权适应度。"""
     schedule = decode_schedule(vector, bounds)
     metrics = simulate_schedule(
         hourly_df=hourly_df,

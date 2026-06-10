@@ -20,6 +20,7 @@ from utils.plotting import (
 
 
 def _natural_sort_key(value):
+    """生成自然排序键，使包含数字的名称按数值顺序排列。"""
     import re
 
     text = str(value)
@@ -30,10 +31,12 @@ def _natural_sort_key(value):
 
 
 def _hours() -> pd.DataFrame:
+    """返回固定的 24 小时时间索引，统一小时级实验口径。"""
     return pd.DataFrame({"hour": range(24)})
 
 
 def _derive_chip_hour(chip_df: pd.DataFrame) -> pd.DataFrame:
+    """根据芯片级记录推导所属小时，用于对齐多层数据。"""
     chip = chip_df.copy()
     if "time_step" not in chip.columns:
         chip["time_step"] = np.arange(len(chip)) % 288
@@ -42,6 +45,7 @@ def _derive_chip_hour(chip_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _cluster_hourly(cluster_df: pd.DataFrame) -> pd.DataFrame:
+    """聚合集群级原始数据，得到小时级电价和功率上限指标。"""
     cluster = cluster_df.copy()
     cluster["time_step"] = pd.to_numeric(cluster["time_step"], errors="coerce").fillna(0).astype(int)
     cluster["hour"] = np.floor(cluster["time_step"] / 12).astype(int).clip(0, 23)
@@ -61,6 +65,7 @@ def _cluster_hourly(cluster_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _server_hourly(server_df: pd.DataFrame) -> pd.DataFrame:
+    """聚合服务器级调度数据，得到小时级任务和负载指标。"""
     server = server_df.copy()
     server["arrival_time"] = pd.to_numeric(server["arrival_time"], errors="coerce").fillna(0).astype(int).clip(0, 23)
     server["cpu_demand"] = pd.to_numeric(server["cpu_demand"], errors="coerce").fillna(0.0)
@@ -90,6 +95,7 @@ def _server_hourly(server_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _chip_hourly(chip_df: pd.DataFrame) -> pd.DataFrame:
+    """聚合芯片级数据，得到小时级实际功率、报量功率和频率指标。"""
     chip = _derive_chip_hour(chip_df)
     for col in ["actual_power_w", "reported_power_w", "power_cap_w", "frequency_ghz"]:
         chip[col] = pd.to_numeric(chip[col], errors="coerce").fillna(0.0)
@@ -111,6 +117,7 @@ def _chip_hourly(chip_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _normalize_cluster_cap(power_cap: pd.Series) -> pd.Series:
+    """将集群功率上限转换为归一化功率容量指标。"""
     values = pd.Series(power_cap, dtype="float64").fillna(0.0)
     if float(values.min()) >= 0.0 and float(values.max()) <= 1.0:
         return values.clip(lower=0.0, upper=1.0)
@@ -118,10 +125,12 @@ def _normalize_cluster_cap(power_cap: pd.Series) -> pd.Series:
 
 
 def _save_distribution_tables(server_df: pd.DataFrame, output_dir: Path) -> dict[str, pd.DataFrame]:
+    """导出机房、机架和服务器层级的任务分布统计表。"""
     server = server_df.copy()
     server["cpu_demand"] = pd.to_numeric(server["cpu_demand"], errors="coerce").fillna(0.0)
 
     def distribution(column: str, label: str) -> pd.DataFrame:
+        """按指定层级统计任务分布并补充层级名称。"""
         if column not in server.columns:
             return pd.DataFrame({label: ["unknown"], "task_count": [len(server)], "cpu_usage": [server["cpu_demand"].sum()]})
         dist = (
@@ -145,6 +154,7 @@ def _save_distribution_tables(server_df: pd.DataFrame, output_dir: Path) -> dict
 
 
 def _plot_price_powercap(aligned: pd.DataFrame, output_dir: Path) -> None:
+    """绘制电价与功率上限的小时级对比图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -169,6 +179,7 @@ def _plot_price_powercap(aligned: pd.DataFrame, output_dir: Path) -> None:
 
 
 def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> None:
+    """绘制芯片实际功率与功率上限的对比图。"""
     save_multi_line_plot(
         chip_hourly,
         x="hour",
@@ -182,6 +193,7 @@ def _plot_chip_actual_vs_cap(chip_hourly: pd.DataFrame, output_dir: Path) -> Non
 
 
 def _plot_dvfs_frequency_power(chip_df: pd.DataFrame, output_dir: Path) -> None:
+    """绘制 DVFS 频率与芯片功率响应关系图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -300,6 +312,7 @@ def _plot_dvfs_frequency_power(chip_df: pd.DataFrame, output_dir: Path) -> None:
 
 
 def _plot_room_hourly_task_heatmap(server_df: pd.DataFrame, output_dir: Path) -> None:
+    """绘制机房维度的小时任务量热力图。"""
     setup_chinese_matplotlib()
     import matplotlib.pyplot as plt
 
@@ -346,6 +359,7 @@ def run_nbsdc_fusion(
     beta: float = 0.25,
     base_reserve: float = 0.10,
 ) -> dict[str, Path]:
+    """运行 NBSDC 三层数据融合实验并导出指标、图表和报告。"""
     data_dir = Path(data_dir)
     data_output_dir = ensure_dir(data_output_dir)
     figure_output_dir = ensure_dir(figure_output_dir)

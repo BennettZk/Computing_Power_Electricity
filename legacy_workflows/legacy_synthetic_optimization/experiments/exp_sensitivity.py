@@ -123,6 +123,7 @@ def run_sensitivity_experiment(
     ]
 
     rows: list[dict] = []
+
     for scenario, scenario_hourly_df, scenario_tasks, scenario_pool, scenario_base_cfg in scenarios:
         result = run_proposed_scheduler(
             hourly_df=scenario_hourly_df,

@@ -29,6 +29,7 @@ class HomogeneousSchedulingProblem(ElementwiseProblem):
     """同构基线问题：沿用原论文“单一服务器类型 + 单一负载”的建模思路。"""
 
     def __init__(self, hourly_df: pd.DataFrame, resource_pool: ResourcePool, base_cfg: dict):
+        """初始化对象状态并缓存后续计算所需参数。"""
         self.hourly_df = hourly_df
         self.resource_pool = resource_pool
         self.base_cfg = base_cfg
@@ -44,6 +45,7 @@ class HomogeneousSchedulingProblem(ElementwiseProblem):
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
+        """评价优化个体的目标函数值和约束违约情况。"""
         server_plan = np.rint(x).astype(int)
         price = self.hourly_df["price"].to_numpy(dtype=float)
         arrival = self.hourly_df["arrival_rate"].to_numpy(dtype=float)

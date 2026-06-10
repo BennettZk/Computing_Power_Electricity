@@ -54,11 +54,13 @@ DEFAULT_CARBON = [
 
 
 def _project_path(path: str | Path) -> Path:
+    """将输入路径解析为项目根目录下的绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _cell_col_index(cell_ref: str | None, fallback: int) -> int:
+    """把 Excel 单元格引用中的列字母转换为零基列索引。"""
     if not cell_ref:
         return fallback
     letters = "".join(ch for ch in cell_ref if ch.isalpha())
@@ -71,6 +73,7 @@ def _cell_col_index(cell_ref: str | None, fallback: int) -> int:
 
 
 def _parse_scalar(value: str | None):
+    """将 XLSX 单元格文本解析为整数、浮点数或字符串。"""
     if value is None:
         return None
     text = value.strip()
@@ -86,13 +89,14 @@ def _parse_scalar(value: str | None):
 
 
 class SimpleXlsxWorkbook:
-    """Dependency-free XLSX reader for value-only worksheets."""
+    """无额外依赖的 XLSX 读取器，仅读取工作表中的单元格值。"""
 
     main_ns = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
     rel_ns = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
     pkg_rel_ns = "{http://schemas.openxmlformats.org/package/2006/relationships}"
 
     def __init__(self, path: Path) -> None:
+        """初始化对象状态并缓存后续计算所需参数。"""
         self.path = path
         if not path.exists():
             raise FileNotFoundError(f"XLSX file not found: {path}")
@@ -102,12 +106,15 @@ class SimpleXlsxWorkbook:
 
     @property
     def sheet_names(self) -> list[str]:
+        """返回工作簿中可读取的工作表名称列表。"""
         return list(self._sheet_paths.keys())
 
     def close(self) -> None:
+        """关闭底层 XLSX 压缩包句柄。"""
         self._zip.close()
 
     def _load_shared_strings(self) -> list[str]:
+        """读取 XLSX 共享字符串表。"""
         if "xl/sharedStrings.xml" not in self._zip.namelist():
             return []
         root = ET.fromstring(self._zip.read("xl/sharedStrings.xml"))
@@ -118,6 +125,7 @@ class SimpleXlsxWorkbook:
         return strings
 
     def _load_sheet_paths(self) -> dict[str, str]:
+        """解析工作簿中工作表名称到 XML 路径的映射。"""
         workbook_root = ET.fromstring(self._zip.read("xl/workbook.xml"))
         rel_root = ET.fromstring(self._zip.read("xl/_rels/workbook.xml.rels"))
         rel_targets = {
@@ -142,6 +150,7 @@ class SimpleXlsxWorkbook:
         return sheet_paths
 
     def read_sheet(self, sheet_name: str) -> pd.DataFrame:
+        """读取指定工作表并转换为 DataFrame。"""
         if sheet_name not in self._sheet_paths:
             raise ValueError(f"Sheet {sheet_name!r} not found in {self.path}. Available sheets: {self.sheet_names}")
         root = ET.fromstring(self._zip.read(self._sheet_paths[sheet_name]))
@@ -164,6 +173,7 @@ class SimpleXlsxWorkbook:
         return pd.DataFrame(rows[1:], columns=headers)
 
     def _cell_value(self, cell):
+        """解析单个 XLSX 单元格的实际值。"""
         cell_type = cell.attrib.get("t")
         if cell_type == "inlineStr":
             texts = [node.text or "" for node in cell.findall(f".//{self.main_ns}t")]
@@ -184,6 +194,7 @@ class SimpleXlsxWorkbook:
 
     @staticmethod
     def _dedupe_headers(raw_headers: list[object]) -> list[str]:
+        """整理表头名称并为重复列追加序号。"""
         headers: list[str] = []
         seen: dict[str, int] = {}
         for idx, header in enumerate(raw_headers):
@@ -197,6 +208,7 @@ class SimpleXlsxWorkbook:
 
 
 def _read_workbook(path: Path) -> SimpleXlsxWorkbook:
+    """打开 XLSX 工作簿并包装为轻量读取器。"""
     try:
         return SimpleXlsxWorkbook(path)
     except Exception as exc:
@@ -204,10 +216,12 @@ def _read_workbook(path: Path) -> SimpleXlsxWorkbook:
 
 
 def _normalize_column(value: object) -> str:
+    """标准化列名以便做宽松匹配。"""
     return re.sub(r"\s+", " ", str(value).strip()).lower()
 
 
 def _find_column(df: pd.DataFrame, candidates: list[str], warnings: list[str], required: bool = False) -> str | None:
+    """在 DataFrame 中按候选名称查找目标列。"""
     normalized = {_normalize_column(col): col for col in df.columns}
     for candidate in candidates:
         key = _normalize_column(candidate)
@@ -221,6 +235,7 @@ def _find_column(df: pd.DataFrame, candidates: list[str], warnings: list[str], r
 
 
 def _numeric_series(df: pd.DataFrame, column: str | None, default: float, fill_counts: dict[str, int], name: str) -> pd.Series:
+    """读取数值列并处理缺失列或非法值。"""
     if column is None:
         fill_counts[name] = len(df)
         return pd.Series(default, index=df.index, dtype="float64")
@@ -230,6 +245,7 @@ def _numeric_series(df: pd.DataFrame, column: str | None, default: float, fill_c
 
 
 def _text_series(df: pd.DataFrame, column: str | None, default: str, fill_counts: dict[str, int], name: str) -> pd.Series:
+    """读取文本列并处理缺失列。"""
     if column is None:
         fill_counts[name] = len(df)
         return pd.Series(default, index=df.index, dtype="object")
@@ -239,6 +255,7 @@ def _text_series(df: pd.DataFrame, column: str | None, default: str, fill_counts
 
 
 def _select_sheet(workbook: SimpleXlsxWorkbook, preferred: str | None, warnings: list[str]) -> tuple[str, pd.DataFrame]:
+    """选择优先工作表，缺失时回退到工作簿首个工作表。"""
     if preferred and preferred in workbook.sheet_names:
         sheet_name = preferred
     else:
@@ -249,6 +266,7 @@ def _select_sheet(workbook: SimpleXlsxWorkbook, preferred: str | None, warnings:
 
 
 def _map_steps_to_hours(step_series: pd.Series, min_step: float, max_step: float, mode: str) -> pd.Series:
+    """把服务器调度时间步映射到 24 小时索引。"""
     step_series = pd.Series(step_series, dtype="float64").fillna(min_step)
     if mode == "raw_step":
         return np.floor(step_series / 12).astype(int).clip(0, 23)
@@ -257,6 +275,7 @@ def _map_steps_to_hours(step_series: pd.Series, min_step: float, max_step: float
 
 
 def _resolve_arrival_time_mode(arrival_step: pd.Series, requested_mode: str) -> tuple[str, dict]:
+    """根据到达步分布确定时间步到小时的映射方式。"""
     arrival_step = pd.Series(arrival_step, dtype="float64").fillna(0.0)
     min_step = float(arrival_step.min()) if len(arrival_step) else 0.0
     max_step = float(arrival_step.max()) if len(arrival_step) else 0.0
@@ -283,6 +302,7 @@ def _resolve_arrival_time_mode(arrival_step: pd.Series, requested_mode: str) -> 
 
 
 def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int, arrival_time_mode: str) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """清洗服务器级 Excel 数据并生成 24 小时任务表。"""
     warnings: list[str] = []
     fill_counts: dict[str, int] = {}
     workbook = _read_workbook(server_xlsx)
@@ -407,6 +427,7 @@ def clean_server_data(server_xlsx: Path, output_dir: Path, seed: int, arrival_ti
 
 
 def clean_cluster_data(cluster_xlsx: Path, output_dir: Path, server_tasks: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
+    """清洗集群级 Excel 数据并生成小时级输入表。"""
     warnings: list[str] = []
     fill_counts: dict[str, int] = {}
     workbook = _read_workbook(cluster_xlsx)
@@ -472,6 +493,7 @@ def clean_cluster_data(cluster_xlsx: Path, output_dir: Path, server_tasks: pd.Da
 
 
 def clean_chip_data(chip_xlsx: Path, output_dir: Path) -> tuple[pd.DataFrame, dict]:
+    """清洗芯片级 Excel 数据并生成小时级功率指标表。"""
     warnings: list[str] = []
     fill_counts: dict[str, int] = {}
     workbook = _read_workbook(chip_xlsx)
@@ -515,6 +537,7 @@ def build_report(
     chip: pd.DataFrame,
     metas: dict[str, dict],
 ) -> list[str]:
+    """汇总清洗后的数据规模、字段填充和告警信息。"""
     lines: list[str] = []
     lines.append("NBSDC uploaded case cleaning report")
     lines.append("=" * 44)
@@ -594,6 +617,7 @@ def build_report(
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="Clean uploaded NBSDC XLSX files into project CSV inputs.")
     parser.add_argument("--cluster-xlsx", default=str(DEFAULT_CLUSTER_XLSX), help="Cluster-level XLSX path.")
     parser.add_argument("--server-xlsx", default=str(DEFAULT_SERVER_XLSX), help="Server-level XLSX path.")
@@ -611,6 +635,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     output_dir = _project_path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

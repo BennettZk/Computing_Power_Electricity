@@ -4,6 +4,7 @@ import math
 
 
 def _factorial(n: int) -> int:
+    """计算非负整数阶乘，并对负数输入给出错误。"""
     if n < 0:
         raise ValueError("n must be non-negative.")
     return math.factorial(n)
@@ -24,7 +25,7 @@ def erlang_c(arrival_rate: float, service_rate: float, servers: int) -> float:
     if a == 0.0:
         return 0.0
 
-    # Use log-sum-exp to avoid overflow when real-scaled scenarios use hundreds of servers.
+    # 使用 log-sum-exp，避免真实规模场景中服务器数量过多导致数值溢出。
     log_terms = [n * math.log(a) - math.lgamma(n + 1) for n in range(servers)]
     log_last = servers * math.log(a) - math.lgamma(servers + 1) - math.log(1.0 - rho)
     max_log = max(max(log_terms), log_last)

@@ -98,6 +98,7 @@ class OutputPaths:
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="生成 DC-区域跨域算力服务分配动图。")
     parser.add_argument("--output-dir", type=Path, default=Path("output"), help="输出目录。")
     parser.add_argument("--frame-step", type=int, default=1, help="抽帧间隔，默认 1。")
@@ -110,6 +111,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def normalize_name(value: object) -> str:
+    """标准化字段名称，消除符号、空格和大小写差异。"""
     text = "" if value is None else str(value)
     text = unicodedata.normalize("NFKC", text).strip().lower()
     return re.sub(r"[\s_\-./\\()（）\[\]【】{}:：,，;；]+", "", text)
@@ -122,6 +124,7 @@ def find_column(
     required: bool = False,
     source: str = "",
 ) -> str | None:
+    """根据候选语义关键词在表头中查找匹配字段。"""
     original_columns = [str(col) for col in columns if col is not None and str(col) != "nan"]
     normalized = {normalize_name(col): col for col in original_columns}
 
@@ -144,6 +147,7 @@ def find_column(
 
 
 def to_numeric(series: pd.Series, fill_value: float | None = None) -> pd.Series:
+    """将输入序列转换为数值序列，并用默认值处理异常项。"""
     result = pd.to_numeric(series.replace("", np.nan), errors="coerce")
     if fill_value is not None:
         result = result.fillna(fill_value)
@@ -151,6 +155,7 @@ def to_numeric(series: pd.Series, fill_value: float | None = None) -> pd.Series:
 
 
 def finite_number(value: object) -> float | None:
+    """判断输入值是否为有限数值。"""
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -161,6 +166,7 @@ def finite_number(value: object) -> float | None:
 
 
 def format_m_token(value: object) -> str:
+    """把 Token 数量格式化为百万 Token 展示口径。"""
     number = finite_number(value)
     if number is None:
         return "无数据"
@@ -168,6 +174,7 @@ def format_m_token(value: object) -> str:
 
 
 def format_percent(value: object) -> str:
+    """把比例值格式化为百分比文本。"""
     number = finite_number(value)
     if number is None:
         return "无数据"
@@ -175,6 +182,7 @@ def format_percent(value: object) -> str:
 
 
 def format_float(value: object, digits: int = 1, suffix: str = "") -> str:
+    """按指定精度格式化浮点数，缺失值使用占位符。"""
     number = finite_number(value)
     if number is None:
         return "无数据"
@@ -182,6 +190,7 @@ def format_float(value: object, digits: int = 1, suffix: str = "") -> str:
 
 
 def configure_chinese_font() -> None:
+    """配置 Matplotlib 中文字体，降低中文乱码风险。"""
     candidates = ["Microsoft YaHei", "SimHei", "Noto Sans CJK SC", "Source Han Sans SC"]
     available = {font.name for font in font_manager.fontManager.ttflist}
     for font_name in candidates:
@@ -199,6 +208,7 @@ def configure_chinese_font() -> None:
 
 
 def discover_candidate_files(root: Path, output_matrix: Path) -> list[Path]:
+    """在候选目录中查找可用的数据输入文件。"""
     keywords = [
         "regional_allocation",
         "rolling_horizon_results",
@@ -224,6 +234,7 @@ def discover_candidate_files(root: Path, output_matrix: Path) -> list[Path]:
 
 
 def map_region(value: object) -> str | None:
+    """把区域文本映射为可视化使用的标准区域类别。"""
     text = normalize_name(value)
     if text in {"local", "domestic", "本地"}:
         return "本地"
@@ -235,6 +246,7 @@ def map_region(value: object) -> str | None:
 
 
 def try_load_real_matrix_from_csv(path: Path, strategy: str) -> pd.DataFrame | None:
+    """尝试从 CSV 中读取真实或已生成的地区分配矩阵。"""
     try:
         df = pd.read_csv(path)
     except Exception as exc:
@@ -325,6 +337,7 @@ def try_load_real_matrix_from_csv(path: Path, strategy: str) -> pd.DataFrame | N
 
 
 def load_real_allocation_matrix(root: Path, output_matrix: Path, strategy: str) -> tuple[pd.DataFrame | None, Path | None]:
+    """加载可用于动画展示的数据中心到区域分配矩阵。"""
     candidates = discover_candidate_files(root, output_matrix)
     print("[检查] DC-区域分配矩阵候选文件：")
     for path in candidates[:20]:
@@ -342,6 +355,7 @@ def load_real_allocation_matrix(root: Path, output_matrix: Path, strategy: str) 
 
 
 def load_hourly_token_context(root: Path, strategy: str) -> tuple[pd.DataFrame, Path | None]:
+    """读取小时级 Token 出口上下文数据。"""
     candidates = [
         root / "outputs" / "token_export" / "hourly_token_export.csv",
         root / "outputs" / "data" / "token_export" / "hourly_token_export.csv",
@@ -393,6 +407,7 @@ def load_hourly_token_context(root: Path, strategy: str) -> tuple[pd.DataFrame, 
 
 
 def dc_margins_from_global(time_step: float, global_margin: float) -> np.ndarray:
+    """根据全局功率裕度构造各数据中心的相对裕度。"""
     phases = np.array([0.0, 1.45, 2.9, 4.35])
     variations = 0.92 + 0.18 * np.sin(time_step / 3.2 + phases) + 0.07 * np.cos(time_step / 5.1 + phases)
     return np.clip(global_margin * variations, 0.05, 0.95)
@@ -402,6 +417,7 @@ def bounded_region_targets(
     total_capacity: float,
     time_step: float,
 ) -> np.ndarray:
+    """生成满足上下限约束的地区服务需求目标。"""
     demand = total_capacity * np.array(
         [
             0.25 + 0.10 * math.sin(time_step / 4.0),
@@ -450,6 +466,7 @@ def bounded_region_targets(
 
 
 def allocate_targets_to_dcs(dc_capacity: np.ndarray, region_targets: np.ndarray, time_step: float) -> np.ndarray:
+    """将地区目标服务量按数据中心能力分配到各数据中心。"""
     allocation = np.zeros((len(DC_IDS), len(REGIONS)))
     remaining = dc_capacity.astype(float).copy()
     # 行为偏好只影响可视化分布，不突破容量/需求约束。
@@ -488,6 +505,7 @@ def allocate_targets_to_dcs(dc_capacity: np.ndarray, region_targets: np.ndarray,
 
 def construct_visualization_matrix(root: Path, strategy: str) -> tuple[pd.DataFrame, Path | None]:
     # 该分配矩阵为基于等效功率裕度构造的可视化场景，不代表真实跨区域算力交易数据。
+    """基于实验输出构造动画使用的数据中心到区域服务矩阵。"""
     print("该分配矩阵为基于等效功率裕度构造的可视化场景，不代表真实跨区域算力交易数据。")
     context, source = load_hourly_token_context(root, strategy)
     records: list[dict[str, float]] = []
@@ -520,6 +538,7 @@ def construct_visualization_matrix(root: Path, strategy: str) -> tuple[pd.DataFr
 
 
 def complete_matrix(matrix: pd.DataFrame) -> pd.DataFrame:
+    """补齐分配矩阵中缺失的数据中心、区域和时间步组合。"""
     records: list[dict[str, float]] = []
     for time_step in sorted(matrix["time_step"].dropna().unique()):
         frame = matrix[matrix["time_step"] == time_step]
@@ -552,6 +571,7 @@ def complete_matrix(matrix: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_frame_metrics(matrix: pd.DataFrame) -> pd.DataFrame:
+    """为动画每一帧计算汇总指标和展示文本。"""
     records = []
     for time_step, frame in matrix.groupby("time_step"):
         region_totals = frame[["local_allocation", "medium_allocation", "remote_allocation"]].sum()
@@ -579,6 +599,7 @@ def build_frame_metrics(matrix: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_or_construct_matrix(root: Path, output_paths: OutputPaths, strategy: str) -> tuple[pd.DataFrame, str]:
+    """优先加载已有矩阵，缺失时构造可视化矩阵。"""
     real_matrix, source = load_real_allocation_matrix(root, output_paths.matrix, strategy)
     if real_matrix is None:
         matrix, source = construct_visualization_matrix(root, strategy)
@@ -608,6 +629,7 @@ def load_or_construct_matrix(root: Path, output_paths: OutputPaths, strategy: st
 
 
 def choose_frames(times: list[float], frame_step: int, max_frames: int) -> list[float]:
+    """根据最大帧数限制选择动画展示的时间步。"""
     if frame_step < 1:
         raise ValueError("--frame-step 必须 >= 1。")
     sampled = times[::frame_step]
@@ -621,6 +643,7 @@ def choose_frames(times: list[float], frame_step: int, max_frames: int) -> list[
 
 
 def setup_axes() -> tuple[plt.Figure, plt.Axes, plt.Axes, plt.Axes]:
+    """初始化动画画布、坐标轴和固定布局元素。"""
     fig = plt.figure(figsize=(14, 7.8), facecolor="white")
     grid = fig.add_gridspec(
         2,
@@ -639,6 +662,7 @@ def setup_axes() -> tuple[plt.Figure, plt.Axes, plt.Axes, plt.Axes]:
 
 
 def draw_network(ax: plt.Axes, frame: pd.DataFrame, metrics_row: pd.Series, max_flow: float, max_region: float) -> None:
+    """绘制当前帧的数据中心到区域算力服务网络。"""
     ax.clear()
     ax.set_xlim(0, 1)
     ax.set_ylim(0.04, 0.99)
@@ -751,6 +775,7 @@ def draw_network(ax: plt.Axes, frame: pd.DataFrame, metrics_row: pd.Series, max_
 
 
 def draw_info(ax: plt.Axes, metrics_row: pd.Series) -> None:
+    """绘制当前帧的指标信息面板。"""
     ax.clear()
     ax.axis("off")
     lines = [
@@ -783,6 +808,7 @@ def draw_info(ax: plt.Axes, metrics_row: pd.Series) -> None:
 
 
 def draw_trend(ax: plt.Axes, metrics: pd.DataFrame, time_step: float) -> None:
+    """绘制当前帧之前的时序趋势曲线。"""
     ax.clear()
     x = metrics["time_step"].to_numpy(dtype=float)
     local = metrics["local_total"].to_numpy(dtype=float) / TOKEN_UNIT_SCALE
@@ -806,6 +832,7 @@ def draw_trend(ax: plt.Axes, metrics: pd.DataFrame, time_step: float) -> None:
 
 
 def create_animation(matrix: pd.DataFrame, metrics: pd.DataFrame, frames: list[float], fps: int) -> animation.FuncAnimation:
+    """创建 Matplotlib 动画对象并绑定帧更新逻辑。"""
     fig, ax_net, ax_info, ax_trend = setup_axes()
     matrix_by_time = {time: frame for time, frame in matrix.groupby("time_step")}
     metrics_by_time = metrics.set_index("time_step", drop=False)
@@ -815,6 +842,7 @@ def create_animation(matrix: pd.DataFrame, metrics: pd.DataFrame, frames: list[f
     max_region = float(metrics[["local_total", "medium_total", "remote_total"]].to_numpy().max())
 
     def update(time_step: float):
+        """根据当前帧刷新动画中的图层和指标展示。"""
         frame = matrix_by_time[time_step]
         metrics_row = metrics_by_time.loc[time_step]
         if isinstance(metrics_row, pd.DataFrame):
@@ -845,6 +873,7 @@ def save_cover_image(
     *,
     dpi: int,
 ) -> None:
+    """保存动画首帧或指定帧作为封面图。"""
     fig, ax_net, ax_info, ax_trend = setup_axes()
     try:
         frame = matrix[matrix["time_step"] == time_step]
@@ -875,10 +904,12 @@ def save_animation(
     dpi: int,
     skip_mp4: bool,
 ) -> None:
+    """导出 GIF 或 MP4 动画文件。"""
     output_paths.gif.parent.mkdir(parents=True, exist_ok=True)
     gif_writer = animation.PillowWriter(fps=fps)
     with tqdm(total=frame_count, desc="导出 GIF") as progress:
         def gif_progress(current_frame: int, total_frames: int) -> None:
+            """接收 GIF 导出进度并更新进度条。"""
             if total_frames and progress.total != total_frames:
                 progress.total = total_frames
             progress.update(max(0, current_frame + 1 - progress.n))
@@ -898,6 +929,7 @@ def save_animation(
         mp4_writer = animation.FFMpegWriter(fps=fps, bitrate=2400)
         with tqdm(total=frame_count, desc="导出 MP4") as progress:
             def mp4_progress(current_frame: int, total_frames: int) -> None:
+                """接收 MP4 导出进度并更新进度条。"""
                 if total_frames and progress.total != total_frames:
                     progress.total = total_frames
                 progress.update(max(0, current_frame + 1 - progress.n))
@@ -916,6 +948,7 @@ def save_animation(
 
 
 def main() -> int:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     configure_chinese_font()
 

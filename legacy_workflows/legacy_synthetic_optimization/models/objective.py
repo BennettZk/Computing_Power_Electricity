@@ -87,6 +87,7 @@ class SimulationResult:
     deferred_task_count: int = 0
 
     def to_dict(self) -> dict[str, Any]:
+        """将仿真结果对象转换为便于导出和绘图的字典。"""
         return {
             "total_energy_kwh": self.total_energy_kwh,
             "total_cost": self.total_cost,

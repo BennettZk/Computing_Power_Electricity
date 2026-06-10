@@ -21,6 +21,7 @@ _configure_plot_fonts()
 
 
 def _localize_title(title: str) -> str:
+    """把图表英文标题映射为中文标题。"""
     title_map = {
         "GA Weighted Fitness Convergence": "GA加权适应度收敛曲线",
         "PSO Weighted Fitness Convergence": "PSO加权适应度收敛曲线",
@@ -29,6 +30,7 @@ def _localize_title(title: str) -> str:
 
 
 def _localize_algorithm_labels(labels) -> list[str]:
+    """把算法英文名称映射为中文显示名称。"""
     label_map = {
         "FCFS": "FCFS",
         "Price-Only": "仅电价响应",
@@ -48,6 +50,7 @@ def _localize_algorithm_labels(labels) -> list[str]:
 
 
 def plot_price_load_curve(hourly_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制电价与负载的双轴曲线图。"""
     fig, ax1 = plt.subplots(figsize=(10, 5))
     ax1.plot(hourly_df["hour"], hourly_df["price"], color="#b94700", marker="o", label="分时电价")
     ax1.set_xlabel("时刻/h")
@@ -69,6 +72,7 @@ def plot_price_load_curve(hourly_df: pd.DataFrame, output_path: str | Path) -> N
 
 
 def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制成本和时延目标的帕累托前沿。"""
     fig, ax = plt.subplots(figsize=(7, 5))
     scatter = ax.scatter(
         pareto_df["total_cost"],
@@ -88,6 +92,7 @@ def plot_pareto_front(pareto_df: pd.DataFrame, output_path: str | Path) -> None:
 
 
 def plot_total_energy_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制不同算法总电费或能耗对比柱状图。"""
     fig, ax = plt.subplots(figsize=(8, 5))
     x = list(range(len(results_df)))
     labels = _localize_algorithm_labels(results_df["algorithm"].astype(str).tolist())
@@ -103,6 +108,7 @@ def plot_total_energy_bar(results_df: pd.DataFrame, output_path: str | Path) -> 
 
 
 def plot_cpu_gpu_utilization(results_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制 CPU 与 GPU 利用率对比图。"""
     fig, ax = plt.subplots(figsize=(9, 5))
     x = range(len(results_df))
     width = 0.35
@@ -121,6 +127,7 @@ def plot_cpu_gpu_utilization(results_df: pd.DataFrame, output_path: str | Path) 
 
 
 def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制 NSGA-II 多目标优化收敛曲线。"""
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(convergence_df["generation"], convergence_df["best_total_cost"], label="最优成本目标")
     ax.plot(convergence_df["generation"], convergence_df["best_delay_objective"], label="最优时延目标")
@@ -136,6 +143,7 @@ def plot_convergence_curve(convergence_df: pd.DataFrame, output_path: str | Path
 
 
 def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path: str | Path, title: str) -> None:
+    """绘制单目标优化算法的收敛曲线。"""
     if convergence_df.empty:
         return
 
@@ -155,6 +163,7 @@ def plot_single_objective_convergence(convergence_df: pd.DataFrame, output_path:
 
 
 def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制消融实验结果对比图。"""
     fig, ax1 = plt.subplots(figsize=(9, 5))
     x_labels = _localize_algorithm_labels(
         ["完整Proposed", "无空间迁移", "无时间迁移", "无异构感知", "无优先级调度"][: len(ablation_df)]
@@ -179,6 +188,7 @@ def plot_ablation_results(ablation_df: pd.DataFrame, output_path: str | Path) ->
 
 
 def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制灵敏度实验结果图。"""
     fig, ax1 = plt.subplots(figsize=(10, 5))
     if "scenario" in sensitivity_df.columns:
         x_labels = sensitivity_df["scenario"].astype(str).tolist()
@@ -208,6 +218,7 @@ def plot_sensitivity_results(sensitivity_df: pd.DataFrame, output_path: str | Pa
 
 
 def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制跨区域延迟参数敏感性图。"""
     scenario_order = ["低跨区时延", "中跨区时延", "高跨区时延"]
     selected = sensitivity_df[sensitivity_df["scenario"].isin(scenario_order)].copy()
     if selected.empty:
@@ -242,6 +253,7 @@ def plot_cross_region_delay_sensitivity(sensitivity_df: pd.DataFrame, output_pat
 
 
 def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制空间迁移任务量对比柱状图。"""
     fig, ax = plt.subplots(figsize=(8, 5))
     x = list(range(len(results_df)))
     labels = _localize_algorithm_labels(results_df["algorithm"].astype(str).tolist())
@@ -271,6 +283,7 @@ def plot_spatial_migration_bar(results_df: pd.DataFrame, output_path: str | Path
 
 
 def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | Path) -> None:
+    """绘制负载跨时段转移曲线。"""
     fig, ax = plt.subplots(figsize=(10, 5))
     hours = hourly_df["hour"]
     ax.plot(hours, metrics.hourly_power_kw, marker="o", label="本地功率")
@@ -286,6 +299,7 @@ def plot_load_shift_curve(hourly_df: pd.DataFrame, metrics, output_path: str | P
 
 
 def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制时间迁移和空间迁移消融对比图。"""
     scenario_order = ["完整Proposed", "无空间迁移", "无时间迁移"]
     selected = ablation_df[ablation_df["algorithm"].isin(scenario_order)].copy()
     if selected.empty:
@@ -314,6 +328,7 @@ def plot_time_space_ablation(ablation_df: pd.DataFrame, output_path: str | Path)
 
 
 def plot_time_space_migration_effect(effect_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制时间迁移与空间迁移的效果对比图。"""
     if effect_df.empty:
         return
 
@@ -343,6 +358,7 @@ def plot_time_space_migration_effect(effect_df: pd.DataFrame, output_path: str |
 
 
 def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制功率构成堆叠图。"""
     required_cols = [
         "hour",
         "cpu_it_power_kw",
@@ -381,6 +397,7 @@ def plot_power_breakdown_stack(power_breakdown_df: pd.DataFrame, output_path: st
 
 
 def plot_rolling_vs_static(rolling_df: pd.DataFrame, output_path: str | Path) -> None:
+    """绘制滚动优化与静态优化对比图。"""
     selected = rolling_df[rolling_df["scope"] == "overall"].copy()
     if selected.empty:
         return

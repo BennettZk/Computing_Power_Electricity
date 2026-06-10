@@ -6,6 +6,7 @@ import sys
 
 
 def _use_project_venv_if_available() -> None:
+    """检测并切换到项目虚拟环境中的 Python 解释器。"""
     venv_python = Path(__file__).resolve().parent / ".venv" / "Scripts" / "python.exe"
     if not venv_python.exists():
         return

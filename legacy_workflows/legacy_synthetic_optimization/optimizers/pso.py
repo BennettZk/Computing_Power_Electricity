@@ -17,6 +17,7 @@ def _evaluate_swarm(
     base_cfg: dict,
     price_cfg: dict,
 ) -> tuple[np.ndarray, list[tuple]]:
+    """批量评价粒子群中每个粒子的适应度。"""
     fitness_values: list[float] = []
     evaluated: list[tuple] = []
     for position in positions:

@@ -20,11 +20,13 @@ REPORT_PATH = PROJECT_ROOT / "outputs" / "large_synthetic_report.txt"
 
 
 def _project_path(path: str | Path) -> Path:
+    """将输入路径解析为项目根目录下的绝对路径。"""
     path = Path(path)
     return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _count_csv_rows(path: Path) -> int:
+    """统计 CSV 文件的数据行数。"""
     if not path.exists():
         return 0
     with path.open("rb") as handle:
@@ -32,6 +34,7 @@ def _count_csv_rows(path: Path) -> int:
 
 
 def _load_hourly_profile(configs: dict[str, dict]) -> pd.DataFrame:
+    """加载生成大规模合成数据所需的小时曲线。"""
     hourly_df = ensure_hourly_profile(configs["base"], configs["price"])
     required_cols = {"hour", "arrival_rate", "price", "carbon_factor"}
     missing = required_cols - set(hourly_df.columns)
@@ -43,6 +46,7 @@ def _load_hourly_profile(configs: dict[str, dict]) -> pd.DataFrame:
 
 
 def _hourly_for_scale(hourly_df: pd.DataFrame, scale: float) -> pd.DataFrame:
+    """按负载倍率生成小时级输入曲线。"""
     if scale <= 0:
         raise ValueError("--scale must be greater than 0.")
     scaled = hourly_df.copy()
@@ -54,6 +58,7 @@ def _hourly_for_scale(hourly_df: pd.DataFrame, scale: float) -> pd.DataFrame:
 
 
 def _hourly_for_target_tasks(hourly_df: pd.DataFrame, target_tasks: int) -> pd.DataFrame:
+    """按目标任务数生成小时级输入曲线。"""
     if target_tasks <= 0:
         raise ValueError("--target-tasks must be a positive integer.")
 
@@ -75,6 +80,7 @@ def _hourly_for_target_tasks(hourly_df: pd.DataFrame, target_tasks: int) -> pd.D
 
 
 def _estimate_bytes_per_task(hourly_df: pd.DataFrame, base_cfg: dict, experiment_cfg: dict, seed: int) -> float:
+    """估算任务 CSV 中单条任务记录的平均字节数。"""
     configured_tasks_path = _project_path(experiment_cfg["paths"]["tasks_path"])
     candidate_paths = [
         configured_tasks_path,
@@ -98,6 +104,7 @@ def _estimate_bytes_per_task(hourly_df: pd.DataFrame, base_cfg: dict, experiment
 
 
 def _write_report(tasks_df: pd.DataFrame, output_path: Path, generation_mode: str) -> None:
+    """写入真实场景构建报告。"""
     output_size_mb = output_path.stat().st_size / (1024 * 1024)
     type_counts = tasks_df["task_type"].value_counts().reindex(
         ["delay_sensitive", "delay_tolerant", "token_batch"],
@@ -137,6 +144,7 @@ def _write_report(tasks_df: pd.DataFrame, output_path: Path, generation_mode: st
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="生成大规模标准合成任务 CSV，用于扩展实验和运行时间压力测试。")
     generation = parser.add_mutually_exclusive_group()
     generation.add_argument("--scale", type=float, default=1.0, help="负载放大倍数，例如 1、5、10、20。")
@@ -148,6 +156,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     configs = load_all_configs(PROJECT_ROOT / "config")
     base_cfg = configs["base"]

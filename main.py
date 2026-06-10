@@ -32,6 +32,7 @@ class RawInputFiles:
 
 
 def _xlsx_files(raw_dir: Path) -> list[Path]:
+    """列出原始数据目录中可用的 Excel 文件。"""
     if not raw_dir.exists():
         raise FileNotFoundError(f"Raw data directory not found: {raw_dir}")
     files = [
@@ -45,6 +46,7 @@ def _xlsx_files(raw_dir: Path) -> list[Path]:
 
 
 def _roles_from_filename(path: Path) -> set[str]:
+    """根据文件名关键词识别原始数据文件角色。"""
     name = path.stem.casefold()
     roles: set[str] = set()
     if any(keyword in name for keyword in ["cluster", "datacenter", "data_center", "数据中心", "集群"]):
@@ -57,6 +59,7 @@ def _roles_from_filename(path: Path) -> set[str]:
 
 
 def _role_from_workbook(path: Path) -> str | None:
+    """根据工作簿中的工作表名称识别文件角色。"""
     workbook = SimpleXlsxWorkbook(path)
     try:
         sheet_names = set(workbook.sheet_names)
@@ -70,6 +73,7 @@ def _role_from_workbook(path: Path) -> str | None:
 
 
 def _single_candidate(role: str, candidates: list[Path], files: list[Path], raw_dir: Path) -> Path:
+    """从候选文件中选出唯一匹配的原始数据文件。"""
     unique = list(dict.fromkeys(candidates))
     if len(unique) == 1:
         return unique[0]
@@ -88,6 +92,7 @@ def _single_candidate(role: str, candidates: list[Path], files: list[Path], raw_
 
 
 def discover_raw_inputs(raw_dir: str | Path = RAW_DIR) -> RawInputFiles:
+    """自动识别集群、服务器和芯片三类原始输入文件。"""
     raw_dir = project_path(raw_dir)
     files = _xlsx_files(raw_dir)
     candidates: dict[str, list[Path]] = {"cluster": [], "server": [], "chip": []}
@@ -121,6 +126,7 @@ def discover_raw_inputs(raw_dir: str | Path = RAW_DIR) -> RawInputFiles:
 
 
 def prepare_cleaned_data(raw_inputs: RawInputFiles, seed: int, arrival_time_mode: str) -> dict[str, Path]:
+    """清洗原始 Excel 数据并生成后续实验输入。"""
     output_dir = ensure_dir(CLEANED_DATA_DIR)
     server_mapped, server_tasks, server_meta = clean_server_data(
         raw_inputs.server,
@@ -146,6 +152,7 @@ def prepare_cleaned_data(raw_inputs: RawInputFiles, seed: int, arrival_time_mode
 
 
 def run_pipeline(raw_dir: str | Path, seed: int, arrival_time_mode: str) -> dict[str, dict[str, Path]]:
+    """串联数据清洗、NBSDC 融合和 Token 出口优化流程。"""
     raw_inputs = discover_raw_inputs(raw_dir)
     print("Raw input files:")
     print(f"- cluster: {raw_inputs.cluster}")
@@ -173,6 +180,7 @@ def run_pipeline(raw_dir: str | Path, seed: int, arrival_time_mode: str) -> dict
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(
         description="Run the full NBSDC pipeline from data/raw XLSX files to final outputs."
     )
@@ -188,6 +196,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     outputs = run_pipeline(
         raw_dir=args.raw_dir,

@@ -66,6 +66,7 @@ class OutputPaths:
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(
         description="生成数据中心负载时空演化 GIF/MP4，用于论文答辩展示。"
     )
@@ -232,6 +233,7 @@ def find_column(
 
 
 def to_numeric(series: pd.Series, *, fill_value: float | None = None) -> pd.Series:
+    """将输入序列转换为数值序列，并用默认值处理异常项。"""
     result = pd.to_numeric(series.replace("", np.nan), errors="coerce")
     if fill_value is not None:
         result = result.fillna(fill_value)
@@ -239,6 +241,7 @@ def to_numeric(series: pd.Series, *, fill_value: float | None = None) -> pd.Seri
 
 
 def format_value(value: object, digits: int = 0, suffix: str = "") -> str:
+    """格式化图表信息框中的数值。"""
     if value is None:
         return "无数据"
     try:
@@ -253,6 +256,7 @@ def format_value(value: object, digits: int = 0, suffix: str = "") -> str:
 
 
 def format_percent(value: object, digits: int = 1) -> str:
+    """把比例值格式化为百分比文本。"""
     number = finite_number(value)
     if number is None:
         return "无数据"
@@ -260,6 +264,7 @@ def format_percent(value: object, digits: int = 1) -> str:
 
 
 def format_time_step(value: object) -> str:
+    """把时间步格式化为可读的时间标签。"""
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -270,6 +275,7 @@ def format_time_step(value: object) -> str:
 
 
 def finite_number(value: object) -> float | None:
+    """判断输入值是否为有限数值。"""
     try:
         number = float(value)
     except (TypeError, ValueError):
@@ -306,6 +312,7 @@ def configure_chinese_font() -> None:
 
 
 def find_excel_file(data_dir: Path, file_name: str, keywords: list[str]) -> Path:
+    """在候选目录中查找符合关键词的 Excel 文件。"""
     exact_path = data_dir / file_name
     if exact_path.exists():
         return exact_path
@@ -668,6 +675,7 @@ def load_chip_metadata(chip_path: Path) -> pd.DataFrame:
 def choose_sampled_times(
     all_time_steps: list[float], frame_step: int, max_frames: int
 ) -> list[float]:
+    """从完整时间序列中选择用于动画展示的采样时间步。"""
     if frame_step < 1:
         raise ValueError("--frame-step 必须 >= 1。")
     sampled = all_time_steps[::frame_step]
@@ -686,6 +694,7 @@ def choose_sampled_times(
 def build_heat_matrices(
     spatial: pd.DataFrame,
 ) -> tuple[dict[float, np.ndarray], list[float], list[float]]:
+    """构建各时间步的数据中心与机房负载热力矩阵。"""
     dc_ids = sorted(spatial["datacenter_id"].dropna().unique().tolist())
     room_ids = sorted(spatial["server_room_id"].dropna().unique().tolist())
     matrices: dict[float, np.ndarray] = {}
@@ -708,6 +717,7 @@ def build_metrics(
     server_step: pd.DataFrame,
     chip: pd.DataFrame,
 ) -> pd.DataFrame:
+    """计算动画所需的小时级负载、任务和功率指标。"""
     totals = (
         spatial.groupby("time_step", as_index=False)
         .agg(
@@ -726,6 +736,7 @@ def build_metrics(
 
 
 def make_colormap() -> LinearSegmentedColormap:
+    """创建负载热力图使用的颜色映射。"""
     return LinearSegmentedColormap.from_list(
         "academic_blues",
         ["#f8fbff", "#dceeff", "#9ecae1", "#3a83c1", "#0b3a67"],
@@ -826,6 +837,7 @@ def create_animation(
     ax_trend.set_ylim(0, 1)
 
     def metric_at(time_step: float, column: str) -> object:
+        """读取指定帧对应的指标值，缺失时返回默认值。"""
         if column not in metrics_by_time.columns or time_step not in metrics_by_time.index:
             return np.nan
         value = metrics_by_time.loc[time_step, column]
@@ -834,6 +846,7 @@ def create_animation(
         return value
 
     def update(time_step: float):
+        """根据当前帧刷新动画中的图层和指标展示。"""
         matrix = matrices.get(float(time_step))
         if matrix is not None:
             image.set_data(matrix)
@@ -887,6 +900,7 @@ def save_animation(
     gif_writer = animation.PillowWriter(fps=fps)
     with tqdm(total=frame_count, desc="导出 GIF") as progress:
         def gif_progress(current_frame: int, total_frames: int) -> None:
+            """接收 GIF 导出进度并更新进度条。"""
             if total_frames and progress.total != total_frames:
                 progress.total = total_frames
             progress.update(max(0, current_frame + 1 - progress.n))
@@ -911,6 +925,7 @@ def save_animation(
         mp4_writer = animation.FFMpegWriter(fps=fps, bitrate=2400)
         with tqdm(total=frame_count, desc="导出 MP4") as progress:
             def mp4_progress(current_frame: int, total_frames: int) -> None:
+                """接收 MP4 导出进度并更新进度条。"""
                 if total_frames and progress.total != total_frames:
                     progress.total = total_frames
                 progress.update(max(0, current_frame + 1 - progress.n))
@@ -935,6 +950,7 @@ def save_animation(
 
 
 def main() -> int:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     configure_chinese_font()
 

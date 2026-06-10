@@ -19,6 +19,7 @@ ENTRYPOINTS = {
 
 
 def _default_python() -> Path:
+    """选择运行旧流程时优先使用的 Python 解释器。"""
     if os.name == "nt":
         venv_python = PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
     else:
@@ -27,6 +28,7 @@ def _default_python() -> Path:
 
 
 def _legacy_env() -> dict[str, str]:
+    """构造旧流程运行所需的环境变量。"""
     env = os.environ.copy()
     legacy_path = str(LEGACY_ROOT)
     current_pythonpath = env.get("PYTHONPATH")
@@ -35,6 +37,7 @@ def _legacy_env() -> dict[str, str]:
 
 
 def run_legacy(mode: str, legacy_args: list[str]) -> int:
+    """调用旧版实验入口并透传模式参数。"""
     if not LEGACY_ROOT.exists():
         raise FileNotFoundError(f"Legacy project directory not found: {LEGACY_ROOT}")
 
@@ -49,6 +52,7 @@ def run_legacy(mode: str, legacy_args: list[str]) -> int:
 
 
 def parse_args() -> tuple[argparse.Namespace, list[str]]:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(
         description="Run archived legacy synthetic optimization workflows without affecting main.py."
     )
@@ -67,6 +71,7 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args, legacy_args = parse_args()
     if legacy_args[:1] == ["--"]:
         legacy_args = legacy_args[1:]

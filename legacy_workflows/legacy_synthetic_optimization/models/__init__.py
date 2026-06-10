@@ -1,1 +1,1 @@
-"""Core domain models for heterogeneous resource scheduling."""
+"""异构资源调度的核心领域模型。"""

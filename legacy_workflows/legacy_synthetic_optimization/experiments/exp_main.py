@@ -90,7 +90,7 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
     pareto_csv_path = Path(experiment_cfg["paths"]["pareto_csv"])
     export_csv_chinese(proposed_result.pareto_df, pareto_csv_path, RESULT_CSV_COLUMN_MAPPING)
 
-    # 自动导出论文实验常用图表。
+    # 导出论文实验常用图表。
     plot_price_load_curve(hourly_df, outputs_dir / "price_load_curve.png")
     plot_pareto_front(proposed_result.pareto_df, outputs_dir / "pareto_front.png")
     plot_total_energy_bar(results_df, outputs_dir / "energy_bar.png")
@@ -239,6 +239,8 @@ def run_main_experiment() -> tuple[pd.DataFrame, dict]:
 
 
 def main() -> None:
+    # 脚本入口
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     run_main_experiment()
 
 

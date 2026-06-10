@@ -1,1 +1,1 @@
-"""Baseline and proposed schedulers."""
+"""基线调度器与本文方法调度器。"""

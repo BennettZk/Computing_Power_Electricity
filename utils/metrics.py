@@ -90,6 +90,7 @@ RESULT_CSV_COLUMN_MAPPING = {
 
 
 def localize_strategy_values(df: pd.DataFrame, column: str = "strategy") -> pd.DataFrame:
+    """把策略字段中的英文取值替换为中文显示值。"""
     output = df.copy()
     if column in output.columns:
         output[column] = output[column].map(STRATEGY_VALUE_MAPPING).fillna(output[column])
@@ -97,6 +98,7 @@ def localize_strategy_values(df: pd.DataFrame, column: str = "strategy") -> pd.D
 
 
 def localize_region_values(df: pd.DataFrame, column: str = "region") -> pd.DataFrame:
+    """把地区字段中的英文取值替换为中文显示值。"""
     output = df.copy()
     if column in output.columns:
         output[column] = output[column].map(REGION_VALUE_MAPPING).fillna(output[column])
@@ -104,6 +106,7 @@ def localize_region_values(df: pd.DataFrame, column: str = "region") -> pd.DataF
 
 
 def localize_parameter_values(df: pd.DataFrame, column: str = "parameter") -> pd.DataFrame:
+    """把参数字段中的英文取值替换为中文显示值。"""
     output = df.copy()
     if column in output.columns:
         output[column] = output[column].map(PARAMETER_VALUE_MAPPING).fillna(output[column])
@@ -111,6 +114,7 @@ def localize_parameter_values(df: pd.DataFrame, column: str = "parameter") -> pd
 
 
 def add_strategy_remark(df: pd.DataFrame, column: str = "strategy") -> pd.DataFrame:
+    """为策略结果补充是否为展示基线的中文备注。"""
     output = df.copy()
     if column in output.columns:
         output["remark"] = np.where(
@@ -123,10 +127,9 @@ def add_strategy_remark(df: pd.DataFrame, column: str = "strategy") -> pd.DataFr
 
 def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[str, str] | None = None) -> Path:
     """
-    Copy a DataFrame, rename known English columns to Chinese, and export it.
+    复制 DataFrame，将已知英文列名映射为中文后导出。
 
-    The original df is not modified. utf-8-sig keeps Chinese headers readable in
-    Excel on Windows.
+    原始 df 不会被修改；utf-8-sig 能让 Windows 上的 Excel 正确识别中文表头。
     """
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,13 +141,14 @@ def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[
 
 
 def safe_divide(numerator: float, denominator: float) -> float:
+    """执行安全除法，分母为零或缺失时返回零。"""
     if denominator == 0 or pd.isna(denominator):
         return 0.0
     return float(numerator) / float(denominator)
 
 
 def normalize_by_max(values: pd.Series | np.ndarray) -> pd.Series:
-    """Normalize a non-negative series by its maximum; constants remain meaningful."""
+    """按最大值归一化非负序列；常量序列仍保持可解释性。"""
     series = pd.Series(values, dtype="float64").fillna(0.0)
     max_value = float(series.max())
     if max_value <= 1e-12:
@@ -153,7 +157,7 @@ def normalize_by_max(values: pd.Series | np.ndarray) -> pd.Series:
 
 
 def normalize_minmax(values: pd.Series | np.ndarray) -> pd.Series:
-    """Min-max normalize a series; constants are mapped to all zeros."""
+    """对序列做 Min-Max 归一化；常量序列映射为全零。"""
     series = pd.Series(values, dtype="float64").fillna(0.0)
     min_value = float(series.min())
     max_value = float(series.max())
@@ -164,4 +168,5 @@ def normalize_minmax(values: pd.Series | np.ndarray) -> pd.Series:
 
 
 def minmax_norm(values: pd.Series | np.ndarray) -> pd.Series:
+    """调用 Min-Max 归一化实现，保留兼容旧名称的入口。"""
     return normalize_minmax(values)

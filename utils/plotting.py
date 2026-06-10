@@ -40,7 +40,7 @@ HIGHLIGHT_COLUMNS = {
 
 
 def setup_chinese_matplotlib() -> None:
-    """Use common Windows Chinese fonts when available and save figures headlessly."""
+    """优先使用常见 Windows 中文字体，并以无界面方式保存图表。"""
     plt.rcParams["font.sans-serif"] = [
         "Microsoft YaHei",
         "SimHei",
@@ -69,11 +69,13 @@ def setup_chinese_matplotlib() -> None:
 
 
 def _resolve_path(path: str | Path) -> Path:
+    """把输出路径解析为项目内绝对路径。"""
     output_path = Path(path)
     return output_path if output_path.is_absolute() else PROJECT_ROOT / output_path
 
 
 def apply_paper_axes(ax, grid_axis: str = "both") -> None:
+    """统一设置论文图表坐标轴和网格样式。"""
     ax.grid(True, axis=grid_axis, color="#e5e7eb", linestyle="--", linewidth=0.8, alpha=0.9)
     ax.set_axisbelow(True)
     for spine in ax.spines.values():
@@ -82,6 +84,7 @@ def apply_paper_axes(ax, grid_axis: str = "both") -> None:
 
 
 def save_figure(fig, path: str | Path) -> None:
+    """同时保存 PNG 和 PDF 图表，并同步到最终图表目录。"""
     output_path = _resolve_path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     png_path = output_path.with_suffix(".png")
@@ -96,6 +99,7 @@ def save_figure(fig, path: str | Path) -> None:
 
 
 def format_hour_axis(ax) -> None:
+    """设置小时轴范围和刻度。"""
     ax.set_xlim(-0.5, 23.5)
     ax.set_xticks(range(0, 24, 2))
 
@@ -110,6 +114,7 @@ def save_line_plot(
     ylabel: str,
     marker: str | None = "o",
 ) -> None:
+    """绘制并保存单条折线图。"""
     setup_chinese_matplotlib()
     output_path = Path(path)
     fig, ax = plt.subplots(figsize=(8, 4.6))
@@ -134,6 +139,7 @@ def save_multi_line_plot(
     ylabel: str,
     labels: dict[str, str] | None = None,
 ) -> None:
+    """绘制并保存多条折线对比图。"""
     setup_chinese_matplotlib()
     output_path = Path(path)
     fig, ax = plt.subplots(figsize=(9, 5))
@@ -172,6 +178,7 @@ def save_bar_plot(
     ylabel: str,
     rotation: int = 0,
 ) -> None:
+    """绘制并保存柱状图。"""
     setup_chinese_matplotlib()
     output_path = Path(path)
     fig, ax = plt.subplots(figsize=(8.5, 4.8))
@@ -195,6 +202,7 @@ def save_scatter_plot(
     ylabel: str,
     alpha: float = 0.45,
 ) -> None:
+    """绘制并保存散点图。"""
     setup_chinese_matplotlib()
     output_path = Path(path)
     fig, ax = plt.subplots(figsize=(7.5, 5))

@@ -33,6 +33,7 @@ SCENARIO_TO_EXPERIMENT = {
 
 
 def _load_real_configs(scenario: str, output_dir: str | None = None) -> dict[str, dict]:
+    """加载真实场景实验所需的基础、资源和实验配置。"""
     config_dir = PROJECT_ROOT / "config" / "real_scenarios"
     experiment_cfg = load_yaml_like(config_dir / SCENARIO_TO_EXPERIMENT[scenario])
     price_cfg = load_yaml_like(PROJECT_ROOT / "config" / "price.yaml")
@@ -57,6 +58,7 @@ def _load_real_configs(scenario: str, output_dir: str | None = None) -> dict[str
 
 
 def _load_inputs(configs: dict[str, dict]) -> tuple[pd.DataFrame, list]:
+    """加载真实场景实验的小时曲线和任务输入。"""
     experiment_cfg = configs["experiment"]
     tasks_path = PROJECT_ROOT / experiment_cfg["paths"]["tasks_path"]
     hourly_path = PROJECT_ROOT / experiment_cfg["paths"]["hourly_input_path"]
@@ -75,6 +77,7 @@ def _load_inputs(configs: dict[str, dict]) -> tuple[pd.DataFrame, list]:
 
 
 def _evaluate_run(name: str, schedule, mode: str, hourly_df, tasks, resource_pool, base_cfg, price_cfg) -> dict:
+    """执行一次调度仿真并整理核心评价指标。"""
     metrics = simulate_schedule(
         hourly_df=hourly_df,
         tasks=tasks,
@@ -88,6 +91,7 @@ def _evaluate_run(name: str, schedule, mode: str, hourly_df, tasks, resource_poo
 
 
 def run_real_scenario(scenario: str = "5k", include_full_algorithms: bool = False, stress: bool = False) -> pd.DataFrame:
+    """运行指定真实规模场景并导出结果。"""
     output_dir = "outputs/real_stress" if stress else "outputs/real_quick"
     configs = _load_real_configs(scenario, output_dir=output_dir)
     base_cfg = configs["base"]
@@ -166,6 +170,7 @@ def run_real_scenario(scenario: str = "5k", include_full_algorithms: bool = Fals
 
 
 def parse_args() -> argparse.Namespace:
+    """解析命令行参数并返回脚本运行配置。"""
     parser = argparse.ArgumentParser(description="运行真实缩放场景 quick/stress 实验，不覆盖默认主实验输出。")
     parser.add_argument("--scenario", choices=["5k", "10k", "full"], default="5k")
     parser.add_argument("--quick", action="store_true", help="保留兼容参数；默认就是 quick。")
@@ -175,6 +180,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     args = parse_args()
     scenario = "full" if args.stress else args.scenario
     run_real_scenario(scenario=scenario, include_full_algorithms=args.full, stress=args.stress)

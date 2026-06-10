@@ -81,12 +81,14 @@ def export_csv_chinese(df: pd.DataFrame, path: str | Path, column_mapping: dict[
 
 
 def safe_divide(numerator: float, denominator: float) -> float:
+    """执行安全除法，分母为零或缺失时返回零。"""
     if denominator == 0:
         return 0.0
     return float(numerator) / float(denominator)
 
 
 def compute_load_imbalance(cpu_utilization: list[float], gpu_utilization: list[float]) -> float:
+    """计算各小时负载率的离散程度。"""
     if not cpu_utilization or not gpu_utilization:
         return 0.0
     paired = zip(cpu_utilization, gpu_utilization)
@@ -94,12 +96,14 @@ def compute_load_imbalance(cpu_utilization: list[float], gpu_utilization: list[f
 
 
 def compute_peak_valley_gap(hourly_power_kw: list[float]) -> float:
+    """计算功率或负载序列的峰谷差。"""
     if not hourly_power_kw:
         return 0.0
     return float(max(hourly_power_kw) - min(hourly_power_kw))
 
 
 def select_compromise_solution(df: pd.DataFrame, objective_cols: list[str]) -> pd.Series:
+    """从帕累托解集中选择归一化后折中的推荐解。"""
     norm = df[objective_cols].copy()
     for col in objective_cols:
         col_min = norm[col].min()
@@ -111,6 +115,7 @@ def select_compromise_solution(df: pd.DataFrame, objective_cols: list[str]) -> p
 
 
 def summarize_result_rows(result_rows: list[dict]) -> pd.DataFrame:
+    """把多组实验结果整理为结果表行。"""
     df = pd.DataFrame(result_rows)
     order = [
         "algorithm",

@@ -7,6 +7,8 @@ from utils.io_utils import load_yaml_like
 
 
 def main() -> None:
+    # 脚本入口
+    """作为脚本入口协调参数解析、数据处理和结果导出。"""
     fusion_path = Path("outputs/data/nbsdc_fusion/aligned_hourly_fusion.csv")
     legacy_fusion_path = Path("outputs/nbsdc_fusion/aligned_hourly_fusion.csv")
     if not fusion_path.exists() and legacy_fusion_path.exists():

@@ -1,1 +1,1 @@
-"""Shared utilities for configuration, metrics and plotting."""
+"""配置、指标和绘图相关的共享工具。"""

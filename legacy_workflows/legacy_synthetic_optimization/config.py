@@ -19,6 +19,7 @@ class SystemConfig:
 
     @classmethod
     def from_project_config(cls) -> "SystemConfig":
+        """根据当前项目配置构造旧流程兼容配置对象。"""
         configs = load_all_configs()
         base_cfg = configs["base"]
         cpu_resource = next(item for item in configs["resource"]["resource_types"] if item["server_type"] == "cpu")
@@ -38,4 +39,5 @@ class SystemConfig:
 
 
 def load_system_config() -> SystemConfig:
+    """从项目配置文件加载系统级参数。"""
     return SystemConfig.from_project_config()

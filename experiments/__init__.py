@@ -1,1 +1,1 @@
-"""Experiment entrypoints."""
+"""实验入口模块。"""
